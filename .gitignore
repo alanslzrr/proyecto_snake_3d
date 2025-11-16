@@ -1,0 +1,21 @@
+# Archivos y carpetas de Python que no nos interesa versionar
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Entornos virtuales locales
+venv/
+.venv/
+
+# Archivos temporales de editores y sistema operativo
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Configuración local de IDEs (el proyecto no depende de ellas)
+.vscode/
+.idea/
+
+
