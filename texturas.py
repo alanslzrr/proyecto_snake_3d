@@ -1,9 +1,18 @@
 """
 Proyecto Snake 3D - texturas.py
 
-En este módulo centralizamos la carga de texturas utilizando Pygame y OpenGL.
-La implementación es prácticamente la misma que en `SHADER/texturas.py`, ya que
-esa versión cubre justo lo que necesitamos para el proyecto.
+En este módulo centralizamos la carga de texturas 2D utilizando Pygame y
+OpenGL, siguiendo la misma filosofía que en `SHADER/texturas.py`.
+
+Aunque en la versión actual del Snake planetario priorizamos una estética más
+geométrica y translúcida (cubo de cristal y vóxeles de color plano), dejamos
+preparada esta infraestructura de texturas para:
+
+- Asignar materiales más ricos a la serpiente o a la comida en fases futuras.
+- Incorporar detalles visuales en el mundo cúbico (por ejemplo, marcadores de
+  zonas especiales sobre la superficie).
+- Experimentar con efectos de iluminación y sombreado que combinen texturas y
+  colores base.
 """
 
 import pygame
@@ -26,11 +35,13 @@ from OpenGL.GL import (
 
 def cargar_textura(ruta_textura: str) -> int:
     """
-    Cargamos una textura desde disco y la registramos en OpenGL.
+    Carga una textura desde disco y la registra en OpenGL, devolviendo el
+    identificador entero asociado.
 
-    De momento mantenemos una función muy simple que devuelve el ID de la textura.
-    Si más adelante vemos que repetimos muchas cargas, podremos montar una pequeña
-    caché sobre esta misma función.
+    Mantenemos una función deliberadamente simple, suficiente para las
+    necesidades actuales del proyecto. Si en fases posteriores detectamos
+    cargas repetidas o un mayor número de recursos, podremos extender este
+    módulo con una pequeña caché sobre esta misma función.
     """
     # Cargamos la imagen con Pygame.
     textura_surface = pygame.image.load(ruta_textura)
@@ -62,5 +73,6 @@ def cargar_textura(ruta_textura: str) -> int:
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
     return int(textura_id)
+
 
 

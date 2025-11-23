@@ -1,98 +1,55 @@
 """
 Proyecto Snake 3D - snake.py
 
-En este módulo agrupamos la serpiente como entidad lógica del juego.
+En este módulo agrupamos la serpiente como entidad lógica del juego dentro del
+“Cubo Planetario”.
 
-En la Fase 3 nuestro objetivo no es todavía moverla, sino conseguir:
+En la fase actual:
 
-- Una serpiente básica construida a partir de varios `Segmento`.
-- Situarla sobre el tablero utilizando coordenadas de celda.
-- Poder dibujarla de forma consistente en la escena 3D.
+- Representamos la serpiente como una lista ordenada de segmentos cúbicos.
+- La inicializamos de forma estática sobre la cara frontal del mundo (Z
+  máxima), utilizando coordenadas discretas (x, y, z) coherentes con el
+  `Tablero`.
+- Diferenciamos visualmente la cabeza del cuerpo mediante una paleta de
+  colores definida en `configuracion.py`.
 
-Más adelante, en fases posteriores, añadiremos aquí la lógica de movimiento,
-crecimiento y colisiones. Por ahora nos quedamos con una serpiente estática
-que nos sirve para validar el modelo de datos y el sistema de dibujo.
+En fases posteriores extenderemos esta clase para incorporar movimiento
+“crawler” sobre la superficie del cubo, transición entre caras, detección de
+colisiones y crecimiento dinámico al recoger comida.
 """
 
-from __future__ import annotations
-
-from typing import List
-
 from configuracion import (
-    TABLERO_ANCHO,
-    TABLERO_LARGO,
-    COLOR_SERPIENTE_CABEZA,
-    COLOR_SERPIENTE_CUERPO,
+    GRID_SIZE, COLOR_SERPIENTE_CABEZA, COLOR_SERPIENTE_CUERPO
 )
 from segmento import Segmento
 from tablero import Tablero
 
-
 class Snake:
-    """
-    Representación básica de la serpiente como lista de segmentos.
-
-    En esta fase mantenemos la serpiente estática: elegimos una posición
-    cómoda sobre el tablero y generamos una pequeña cadena de segmentos
-    alineados. El objetivo es que se vea claramente en pantalla y que
-    nos acostumbremos a trabajar con coordenadas de celda.
-    """
-
-    def __init__(self, tablero: Tablero, longitud_inicial: int = 3) -> None:
+    def __init__(self, tablero: Tablero):
         self.tablero = tablero
-        self.longitud_inicial = max(1, longitud_inicial)
+        self.segmentos = []
+        self._crear_inicial()
 
-        self.segmentos: List[Segmento] = []
-        self._crear_serpiente_inicial()
-
-    # ------------------------------------------------------------------
-    # Construcción inicial
-    # ------------------------------------------------------------------
-
-    def _crear_serpiente_inicial(self) -> None:
+    def _crear_inicial(self):
         """
-        Creamos una serpiente muy sencilla en el centro del tablero.
+        Crea la configuración inicial de la serpiente sobre la cara frontal del
+        cubo (Z positivo).
 
-        Colocamos la cabeza en el centro y vamos añadiendo segmentos hacia
-        atrás en el eje Z. Todavía no nos preocupamos por la dirección real
-        de movimiento, eso llegará en la siguiente fase.
+        Colocamos la cabeza en el centro de la cara y situamos dos segmentos
+        adicionales del cuerpo inmediatamente por debajo en el eje Y, de manera
+        que la cadena sea claramente visible sobre la superficie del mundo
+        cúbico.
         """
-        centro_x = TABLERO_ANCHO // 2
-        centro_z = TABLERO_LARGO // 2
-
+        z_face = GRID_SIZE - 1 
+        mid = GRID_SIZE // 2
+        
         # Cabeza
-        self.segmentos.append(
-            Segmento(
-                celda_x=centro_x,
-                celda_z=centro_z,
-                color=COLOR_SERPIENTE_CABEZA,
-            )
-        )
+        self.segmentos.append(Segmento(mid, mid, z_face, COLOR_SERPIENTE_CABEZA))
+        
+        # Cuerpo (2 segmentos hacia abajo)
+        self.segmentos.append(Segmento(mid, mid - 1, z_face, COLOR_SERPIENTE_CUERPO))
+        self.segmentos.append(Segmento(mid, mid - 2, z_face, COLOR_SERPIENTE_CUERPO))
 
-        # Cuerpo inicial, alineado detrás de la cabeza en el eje Z
-        for i in range(1, self.longitud_inicial):
-            self.segmentos.append(
-                Segmento(
-                    celda_x=centro_x,
-                    celda_z=centro_z - i,
-                    color=COLOR_SERPIENTE_CUERPO,
-                )
-            )
-
-    # ------------------------------------------------------------------
-    # Dibujado
-    # ------------------------------------------------------------------
-
-    def dibujar(self) -> None:
-        """
-        Recorremos todos los segmentos y los dibujamos sobre el tablero actual.
-
-        De momento no hay noción de "cabeza activa" más allá del color, ya que
-        la serpiente permanece quieta. En cuanto tengamos movimiento, este
-        método seguirá siendo válido: la lista de segmentos será la que vaya
-        cambiando con el tiempo.
-        """
-        for segmento in self.segmentos:
-            segmento.dibujar(self.tablero)
-
-
+    def dibujar(self):
+        for seg in self.segmentos:
+            seg.dibujar(self.tablero)

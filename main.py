@@ -1,153 +1,113 @@
 """
-Proyecto Snake 3D - main.py
+Proyecto Snake 3D - main.py (Versión Vóxel / Cubo Rotatorio)
 
-En este archivo montamos el punto de entrada de la aplicación. Sobre la base
-del proyecto de referencia `SHADER`, aquí orquestamos:
+En este archivo implementamos el punto de entrada de la aplicación y el bucle
+principal del juego en su versión “Cubo Planetario”.
 
-- La ventana de Pygame con contexto OpenGL.
-- La cámara orbital principal.
-- El tablero 3D centrado en el origen.
-- Y, a partir de la Fase 3, una serpiente básica representada por varios cubos.
+Desde aquí orquestamos:
 
-El objetivo es tener un bucle de juego claro sobre el que iremos añadiendo
-funcionalidad (movimiento, comida, colisiones, etc.) de forma incremental.
+- La creación de la ventana de Pygame con contexto OpenGL.
+- La configuración básica del pipeline (proyección en perspectiva y color de
+  fondo).
+- La instanciación del mundo cúbico (`Tablero`) y de la serpiente (`Snake`).
+- La gestión del bucle de juego, incluyendo la lectura del teclado y la
+  aplicación de una rotación global al mundo en función del input del usuario.
+
+En esta fase del proyecto todavía no movemos la serpiente de forma autónoma:
+utilizamos la rotación del cubo completo para inspeccionar visualmente la
+estructura de vóxeles y validar las transformaciones geométricas compuestas.
 """
 
-
 import pygame
-from pygame.locals import DOUBLEBUF, OPENGL
-from OpenGL.GL import (
-    glClearColor,
-    glEnable,
-    glShadeModel,
-    glClear,
-    glMatrixMode,
-    glLoadIdentity,
-    GL_COLOR_BUFFER_BIT,
-    GL_DEPTH_BUFFER_BIT,
-    GL_DEPTH_TEST,
-    GL_MODELVIEW,
-    GL_PROJECTION,
-    GL_SMOOTH,
-    glRotatef,
-)
+from pygame.locals import *
+from OpenGL.GL import *
 from OpenGL.GLU import gluPerspective, gluLookAt
 
-from camara import Camara
-from configuracion import (
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
-    SCREEN_ASPECT_RATIO,
-    FOV,
-    NEAR_PLANE,
-    FAR_PLANE,
-    FPS,
-    MILLISECONDS_PER_SECOND,
-)
-from utilidades import dibujar_elementos_auxiliares
+from configuracion import *
 from tablero import Tablero
 from snake import Snake
-from usuario import procesar_eventos_raton, consultar_estado_teclado
 
-
-def inicializar_escena() -> pygame.Surface:
-    """
-    Creamos la ventana, configuramos el contexto de OpenGL y dejamos lista
-    la proyección en perspectiva.
-    """
+def main():
     pygame.init()
+    display = (SCREEN_WIDTH, SCREEN_HEIGHT)
+    pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("Snake 3D - Fase 3: Estructura Vóxel")
 
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Snake 3D - Fase 3: Serpiente básica sobre el tablero")
-
-    # Color de fondo y ajustes básicos de OpenGL
-    glClearColor(0.0, 0.0, 0.0, 1.0)
+    # Configuración básica de OpenGL: prueba de profundidad y color de fondo.
     glEnable(GL_DEPTH_TEST)
-    glShadeModel(GL_SMOOTH)
+    glClearColor(*COLOR_FONDO) # Fondo oscuro
 
-    # Matriz de proyección
+    # Configuración de la proyección en perspectiva. Utilizamos los parámetros
+    # centralizados en `configuracion.py` para garantizar coherencia visual.
     glMatrixMode(GL_PROJECTION)
     gluPerspective(FOV, SCREEN_ASPECT_RATIO, NEAR_PLANE, FAR_PLANE)
 
-    # Matriz de vista/modelo
     glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-
-    return screen
-
-
-def crear_camara_inicial() -> Camara:
-    """
-    Creamos la cámara con una configuración cómoda para ver el origen, que de
-    momento es donde vamos a centrar el tablero en fases posteriores.
-    """
-    camara = Camara(pitch=30.0, yaw=45.0, roll=0.0, radio=10.0)
-    camara.actualizar_camara()
-    return camara
-
-
-def renderizar(camara: Camara, tablero: Tablero, snake: Snake) -> None:
-    """
-    Borramos el frame anterior, colocamos la cámara y dibujamos los elementos
-    auxiliares (ejes y rejilla).
-    """
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glLoadIdentity()
-
-    # Aplicamos el roll de la cámara antes de configurar la vista
-    glRotatef(camara.roll, 0.0, 0.0, 1.0)
-
-    cam_x, cam_y, cam_z = camara.obtener_posicion()
-    # De momento miramos al origen (0, 0, 0), que será el centro del tablero
-    gluLookAt(cam_x, cam_y, cam_z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
-
-    # Ejes para situarnos en la escena y el tablero 3D como superficie de juego
-    dibujar_elementos_auxiliares(ejes=True, rejilla=False)
-    tablero.dibujar()
-    snake.dibujar()
-
-
-def bucle_principal() -> None:
-    """
-    Bucle principal del juego.
-
-    Por ahora sólo gestionamos la cámara y el dibujado de la escena base.
-    La serpiente, el tablero y la comida se irán integrando sobre esta estructura.
-    """
-    screen = inicializar_escena()
-    _ = screen  # De momento no usamos el objeto directamente, pero lo mantenemos por claridad.
-
-    camara = crear_camara_inicial()
+    
+    # Inicializamos los objetos principales de la escena:
+    # - `Tablero`: mundo cúbico volumétrico (rejilla de vóxeles).
+    # - `Snake`: serpiente adherida inicialmente a una de las caras del cubo.
     tablero = Tablero()
-    snake = Snake(tablero=tablero, longitud_inicial=3)
-
+    snake = Snake(tablero)
+    
+    # Variables de rotación del mundo (acumulamos la rotación en función de la
+    # entrada del usuario con las teclas de dirección).
+    rot_x = 0.0
+    rot_y = 0.0
+    
     clock = pygame.time.Clock()
-    ejecutando = True
 
-    while ejecutando:
-        delta_time = clock.tick(FPS) / MILLISECONDS_PER_SECOND
+    while True:
+        dt = clock.tick(FPS) / 1000.0 # Delta time en segundos
 
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                ejecutando = False
-            elif evento.type in (
-                pygame.MOUSEBUTTONDOWN,
-                pygame.MOUSEBUTTONUP,
-                pygame.MOUSEMOTION,
-                pygame.MOUSEWHEEL,
-            ):
-                procesar_eventos_raton(evento, camara)
+        # 1. Entrada (input)
+        #    Aquí gestionamos eventos de ventana y teclado. De momento sólo
+        #    escuchamos el cierre de la ventana y las flechas de dirección.
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
 
-        consultar_estado_teclado(camara, delta_time)
-        camara.actualizar_camara()
+        # Control de rotación del cubo gigante mediante teclas de dirección.
+        # Cada flecha modifica el ángulo acumulado en el eje correspondiente.
+        keys = pygame.key.get_pressed()
+        if keys[K_LEFT]:
+            rot_y -= VELOCIDAD_ROTACION_MUNDO * dt
+        if keys[K_RIGHT]:
+            rot_y += VELOCIDAD_ROTACION_MUNDO * dt
+        if keys[K_UP]:
+            rot_x -= VELOCIDAD_ROTACION_MUNDO * dt
+        if keys[K_DOWN]:
+            rot_x += VELOCIDAD_ROTACION_MUNDO * dt
 
-        renderizar(camara, tablero, snake)
+        # 2. Renderizado
+        #    Limpiamos los buffers, colocamos la cámara en una posición fija
+        #    tipo isométrica y aplicamos la rotación global del mundo antes de
+        #    dibujar el tablero y la serpiente.
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadIdentity()
+
+        # Cámara fija: miramos al origen desde una esquina (vista isométrica
+        # aproximada) para apreciar el volumen completo del cubo de vóxeles.
+        distancia_camara = GRID_SIZE * 2.5
+        gluLookAt(distancia_camara, distancia_camara * 0.8, distancia_camara, 
+                  0, 0, 0, 
+                  0, 1, 0)
+
+        # --- Aplicamos la rotación global al mundo cúbico ---
+        glPushMatrix()
+        glRotatef(rot_x, 1, 0, 0) # Rotación eje X (Arriba/Abajo)
+        glRotatef(rot_y, 0, 1, 0) # Rotación eje Y (Izquierda/Derecha)
+
+        # Dibujamos el contenido del mundo:
+        # primero la estructura volumétrica del tablero y, a continuación, la
+        # serpiente sobre la cara frontal.
+        tablero.dibujar()
+        snake.dibujar()
+
+        glPopMatrix()
+
         pygame.display.flip()
 
-    pygame.quit()
-
-
 if __name__ == "__main__":
-    bucle_principal()
-
-
+    main()

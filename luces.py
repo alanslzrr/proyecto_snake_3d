@@ -1,8 +1,18 @@
 """
 Proyecto Snake 3D - luces.py
 
-Seguimos el mismo enfoque que en `SHADER/luces.py`: una pequeña clase que
-se encarga de enviar los parámetros de iluminación al programa de shaders.
+En este módulo encapsulamos la configuración de iluminación que enviamos a los
+shaders del pipeline moderno de OpenGL.
+
+Reutilizamos y adaptamos el enfoque del proyecto de referencia `SHADER`,
+manteniendo una interfaz sencilla que agrupa los parámetros de luz más
+relevantes (componente ambiente, difusa, especular y brillo) y los expone en
+forma de una única clase lista para ser usada por el resto del proyecto.
+
+Aunque en la versión actual del Snake planetario todavía no explotamos todos
+los efectos de iluminación posibles, dejamos esta infraestructura preparada para
+realzar, en fases posteriores, el volumen del cubo de vóxeles y la presencia de
+la serpiente sobre su superficie.
 """
 
 from OpenGL.GL import (
@@ -15,8 +25,13 @@ from OpenGL.GL import (
 
 class Iluminacion:
     """
-    Representamos una única fuente de luz con componentes ambiente, difusa,
-    especular y un exponente de brillo para los reflejos especulares.
+    Representa una única fuente de luz puntual con componentes ambiente,
+    difusa y especular, además de un exponente de brillo para controlar la
+    intensidad de los reflejos especulares en los shaders.
+
+    Centralizar estos parámetros en una clase nos permite ajustar de forma
+    coherente la atmósfera visual de la escena (cubo, serpiente y elementos
+    auxiliares) sin dispersar configuraciones por el código.
     """
 
     def __init__(self) -> None:
@@ -28,12 +43,18 @@ class Iluminacion:
 
     def aplicar(self, shader_program: int, light_pos: tuple[float, float, float], view_pos: tuple[float, float, float]) -> None:
         """
-        Enviamos los parámetros de la luz al programa de shaders.
+        Envía los parámetros de la luz al programa de shaders activo.
 
         Args:
-            shader_program: ID del programa de shaders activo.
-            light_pos: posición de la luz en el mundo.
-            view_pos: posición de la cámara, necesaria para el cálculo especular.
+            shader_program:
+                ID del programa de shaders sobre el que vamos a aplicar la
+                configuración de iluminación.
+            light_pos:
+                Posición de la luz en coordenadas de mundo, utilizada por el
+                shader para calcular direcciones de iluminación.
+            view_pos:
+                Posición de la cámara en el mundo, necesaria para calcular el
+                componente especular en el modelo de iluminación.
         """
         glUseProgram(shader_program)
 

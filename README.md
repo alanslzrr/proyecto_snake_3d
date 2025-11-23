@@ -2,7 +2,7 @@
 
 **Proyecto de la Asignatura - Avance de Proyecto**
 
-# Juego Snake 3D
+# Juego Snake 3D: Versión Vóxel Planetario
 
 ## Grupo 3
 
@@ -18,19 +18,22 @@
 
 ## 1. Título
 
-**Juego Snake 3D: Simulación Interactiva con Transformaciones Geométricas**
+**Juego Snake 3D: Simulación Interactiva en Espacio Cúbico Rotacional**
 
-Tras una revisión inicial de la propuesta y el alcance del proyecto, confirmamos el título que mejor describe nuestra propuesta: un juego de la serpiente (Snake) en un entorno tridimensional donde el jugador controla el movimiento mediante el teclado y observa la escena desde diferentes perspectivas gracias a una cámara libre y en tercera persona. El énfasis está en la visualización tridimensional mediante transformaciones geométricas (rotaciones, traslaciones y escalados) aplicadas sobre primitivas básicas, más que en una simulación física realista del movimiento.
+Tras una revisión profunda de la propuesta y buscando un mayor desafío técnico y visual, hemos evolucionado nuestro título y enfoque. Pasamos de un tablero plano tradicional a una propuesta de **"Mundo Cúbico" (estilo Vóxel)**. En esta simulación, la serpiente se desplaza por las caras de un cubo tridimensional que rota sobre su propio eje, creando una mecánica de juego donde el entorno gira para adaptarse a la posición del jugador, en lugar de mover una cámara alrededor de un plano estático.
 
 ---
 
 ## 2. Resumen
 
-Durante esta fase inicial del proyecto, hemos llevado a cabo un análisis de las herramientas y técnicas disponibles para el desarrollo de aplicaciones gráficas interactivas en 3D. Hemos evaluado diferentes enfoques de renderizado disponibles en el contexto de la asignatura, comparando el pipeline moderno con shaders personalizados (GLSL) frente al pipeline fijo tradicional de OpenGL utilizando VBOs (Vertex Buffer Objects).
+Durante la fase inicial del proyecto, evaluamos las herramientas disponibles y comenzamos con un enfoque clásico de Snake sobre un plano. Sin embargo, al analizar referentes visuales más modernos y mecánicas de juego más inmersivas (inspirados en conceptos de "gravedad local" o juegos particulares como *Snake 3D Cube*), decidimos pivotar el desarrollo hacia un sistema de **renderizado volumétrico**.
 
-Como resultado de esta evaluación, hemos determinado que el pipeline moderno con shaders es la opción más adecuada para nuestro proyecto, ya que nos permite un mayor control sobre el renderizado, mejor rendimiento cuando manejamos múltiples objetos en escena, y una mayor flexibilidad para futuras mejoras y efectos visuales. Esta decisión se fundamenta en las características específicas de nuestro juego, donde necesitamos renderizar múltiples segmentos de serpiente que cambian dinámicamente, objetos de comida que aparecen y desaparecen, y un tablero tridimensional, todo ello actualizándose en tiempo real.
+En este nuevo enfoque, el tablero no es una superficie plana, sino un volumen de $N \times N \times N$ celdas (vóxeles). Esto nos ha llevado a replantear la arquitectura gráfica:
+1.  **Visualización**: Pasamos de dibujar un simple `GL_QUAD` a renderizar una estructura de múltiples cubos semitransparentes que dan volumen a la escena.
+2.  **Cámara y Transformaciones**: En lugar de orbitar la cámara alrededor de la escena, hemos fijado la cámara (como primer objetivo, luego plantearemos hacer nuevas funciones para que la cámara pueda moverse hacia primera persona) y aplicamos transformaciones de rotación global a todo el "mundo" basándonos en el input del usuario.
+3.  **Pipeline**: Seguimos utilizando el pipeline moderno con OpenGL y Python, pero ahora gestionando la profundidad y la transparencia (Alpha Blending) para lograr un efecto de "cubo de cristal".
 
-Hemos comenzado a establecer la estructura base del código, aprovechando los materiales y ejemplos proporcionados en las sesiones prácticas de la asignatura, específicamente basándonos en la carpeta SHADER de la sesión 11 correspondiente al tema 3.5. Las razones detalladas de esta decisión técnica se explican en la sección de Metodología.
+Este documento detalla cómo hemos adaptado nuestra base de código inicial para soportar este nuevo paradigma y los avances logrados hasta la Fase 3.
 
 ---
 
@@ -38,277 +41,104 @@ Hemos comenzado a establecer la estructura base del código, aprovechando los ma
 
 ### Objetivo General
 
-El objetivo general del proyecto es crear una escena interactiva donde una serpiente formada por segmentos geométricos se mueva sobre un tablero tridimensional, recoja objetos (por ejemplo, puntos o cuadrados) y aumente su longitud progresivamente mediante transformaciones geométricas 3D controladas por el usuario.
+Desarrollar un videojuego Snake 3D "planetario" donde la serpiente se mueve sobre la superficie de un cubo gigante rotatorio. El objetivo es dominar las transformaciones geométricas compuestas (rotación del mundo + traslación local) y el manejo de estructuras de datos tridimensionales.
 
-### Objetivos Específicos
+### Objetivos Específicos (Actualizados)
 
-1. **Implementación del entorno 3D**: Crear un tablero tridimensional visible que sirva como área de juego, utilizando primitivas básicas y transformaciones geométricas.
-
-2. **Modelado de la serpiente**: Desarrollar una representación de la serpiente mediante segmentos geométricos que puedan moverse, rotarse y trasladarse en el espacio 3D. El movimiento no necesita ser físicamente realista, sino que se enfocará en representar visualmente el desplazamiento mediante transformaciones controladas.
-
-3. **Sistema de control**: Implementar un sistema de entrada mediante teclado que permita al jugador controlar la dirección de movimiento de la serpiente en el espacio 3D.
-
-4. **Sistema de cámara**: Desarrollar una cámara interactiva que permita al jugador observar la escena desde diferentes ángulos, incluyendo modos de cámara libre y en tercera persona, controlable mediante teclado y/o ratón.
-
-5. **Sistema de recolección**: Implementar objetos de comida que aparezcan en el tablero, puedan ser detectados cuando la serpiente los recoja, y provoquen el crecimiento de la serpiente.
-
-6. **Mecánica de crecimiento**: Hacer que la serpiente aumente su longitud progresivamente mediante la adición de nuevos segmentos geométricos cuando se recojan objetos de comida.
-
-7. **Renderizado en tiempo real**: Asegurar que toda la escena se actualice y renderice correctamente en tiempo real, mostrando los cambios dinámicos en la serpiente y el entorno.
-
-### Ajustes y Precisiones
-
-Tras la evaluación inicial, hemos precisado que:
-
-- No buscamos una simulación física realista del movimiento de una serpiente, sino una representación visual mediante transformaciones geométricas simples.
-- El enfoque principal está en las transformaciones 3D (rotación, traslación, escalado) aplicadas a primitivas geométricas básicas.
-- La cámara será completamente funcional pero puede simplificarse en comparación con sistemas de cámaras más complejos, priorizando la usabilidad para el juego.
+1.  **Renderizado Volumétrico (Vóxel)**: Implementar un sistema que dibuje un cubo formado por pequeñas celdas cúbicas, gestionando correctamente la transparencia para ver el interior de la estructura.
+2.  **Sistema de Coordenadas 3D**: Migrar de un sistema 2D lógico `(x, z)` a un sistema completamente 3D `(x, y, z)` que permita ubicar segmentos en cualquiera de las 6 caras del cubo.
+3.  **Transformación Global del Mundo**: Implementar una lógica de control donde las teclas de dirección no mueven "la cámara", sino que rotan la matriz del modelo completo (el mundo gira ante los ojos del jugador).
+4.  **Gestión de Transparencias**: Utilizar *Alpha Blending* en OpenGL para lograr estética de cristal/vidrio en los cubos vacíos.
+5.  **Lógica de Movimiento en Superficie**: Desarrollar (en fases futuras) el algoritmo que permita a la serpiente transitar de una cara a otra, rotando el cubo 90 grados suavemente al cruzar un borde.
 
 ---
 
 ## 4. Metodología
 
-### Enfoque de Desarrollo
+### Reestructuración del Enfoque
 
-Nuestro proyecto sigue una metodología incremental e iterativa, donde comenzamos con componentes básicos y vamos añadiendo funcionalidades de manera progresiva. Esta aproximación nos permite validar cada parte del sistema antes de integrarla con el resto de componentes.
+Nuestro cambio de diseño implicó una refactorización de los componentes que ya teníamos. Mantenemos la modularidad, pero cambiamos la responsabilidad de las clases principales:
 
-### Tecnologías y Herramientas
+* **`main.py`**: Ahora gestiona la **Matriz de Rotación Global**. Es el encargado de escuchar las flechas del teclado y aplicar `glRotate` a toda la escena antes de dibujar nada.
+* **`tablero.py`**: Ya no es un plano. Ahora es un bucle tridimensional que dibuja cubos en las posiciones $(x, y, z)$ usando materiales translúcidos.
+* **`snake.py`**: La serpiente se inicializa ahora en una de las caras del cubo (por ejemplo, la cara frontal Z), y sus segmentos tienen coordenadas espaciales completas.
 
-**Lenguaje y Bibliotecas Principales:**
-- **Python 3**: Lenguaje de programación principal
-- **Pygame**: Para la gestión de ventanas, eventos de entrada (teclado, ratón) y el bucle principal de la aplicación
-- **OpenGL**: Para el renderizado 3D y la gestión de gráficos
-- **PyOpenGL**: Binding de Python para OpenGL
-- **NumPy**: Para operaciones matemáticas y manejo de matrices y vectores en las transformaciones geométricas
-- **GLSL**: Lenguaje de shaders para programar el pipeline de renderizado en la GPU
+### Tecnologías 
 
-**Enfoque de Renderizado: Pipeline Moderno con Shaders**
-
-Tras analizar las opciones disponibles en el contexto de la asignatura, específicamente las carpetas SHADER y VBOs proporcionadas en las sesiones prácticas, hemos decidido utilizar el **pipeline con shaders personalizados** (carpeta SHADER de la sesión 11, tema 3.5) en lugar del pipeline fijo tradicional con VBOs. Esta decisión se fundamenta en las siguientes consideraciones técnicas:
-
-1. **Rendimiento con múltiples objetos dinámicos**: El pipeline moderno con shaders nos permite un renderizado más eficiente cuando manejamos muchos objetos que cambian constantemente, lo cual es esencial para nuestro juego con segmentos de serpiente que crecen dinámicamente.
-
-2. **Flexibilidad para transformaciones**: Nos da control total sobre cómo se aplican las transformaciones (modelo, vista, proyección) mediante matrices que se pasan como uniforms a los shaders, esencial para las transformaciones geométricas 3D continuas de cada segmento.
-
-3. **Escalabilidad y extensibilidad**: Proporciona la base necesaria para hacer mejoras visuales sin tener que cambiar completamente la arquitectura.
-
-4. **Control sobre la iluminación**: Los shaders personalizados permiten implementar iluminación de manera programable, mejorando la percepción de profundidad y distinción de objetos en el juego 3D.
-
-
-**Comparación con el enfoque alternativo:**
-
-El pipeline fijo con VBOs sería más simple de implementar inicialmente y utiliza funciones tradicionales de OpenGL. Sin embargo, este enfoque está limitado en términos de flexibilidad y rendimiento cuando se trabaja con muchas primitivas que cambian dinámicamente. Además, el pipeline fijo está deprecado en versiones modernas de OpenGL (Core Profile), y aunque funcione en versiones antiguas, el conocimiento sobre shaders es más valioso a largo plazo.
-
-### Estructura del Código
-
-Basándonos en la estructura de la carpeta SHADER, planteamos la siguiente organización de nuestro proyecto:
-
-```
-proyecto_snake_3d/
-│
-├── main.py                 # Punto de entrada principal, bucle del juego, gestión de eventos
-├── configuracion.py        # Constantes y configuraciones (resolución, FPS, colores, etc.)
-├── camara.py               # Clase para gestión de la cámara (libre y tercera persona)
-├── snake.py                # Clase principal de la serpiente (segmentos, movimiento, crecimiento)
-├── segmento.py             # Clase para representar cada segmento individual de la serpiente
-├── tablero.py              # Clase para el tablero 3D y gestión de posiciones
-├── comida.py               # Clase para objetos de comida (generación, detección de colisiones)
-├── transformaciones.py     # Funciones auxiliares para transformaciones geométricas 3D
-├── texturas.py             # Carga y gestión de texturas para los objetos
-├── luces.py                # Configuración de iluminación (clase Iluminacion para shaders)
-├── utilidades.py           # Funciones auxiliares (dibujado de ejes, rejillas, etc.)
-├── usuario.py              # Procesamiento de eventos de entrada (teclado, ratón)
-│
-├── shaders/
-│   ├── vertex_shader.glsl  # Shader de vértices para transformaciones y paso de datos
-│   └── fragment_shader.glsl # Shader de fragmentos para iluminación y colores
-│
-├── modelos/                # Modelos 3D en formato .obj (si los utilizamos)
-│   └── (cubo.obj, esfera.obj, etc.)
-│
-└── texturas/               # Archivos de texturas
-    └── (texturas para objetos del juego)
-```
-
-**¿Qué buscamos de esta estructura?**
-
-- **Separación de responsabilidades**: Cada archivo tiene una responsabilidad clara y específica, lo que facilita el mantenimiento y la colaboración entre miembros del grupo.
-
-- **Modularidad**: La estructura es modular, permitiendo que cada componente (serpiente, tablero, comida, cámara) se desarrolle y pruebe de forma independiente antes de integrarse.
-
-- **Reutilización**: Utilizamos las clases y funciones existentes de la carpeta SHADER base (como `camara.py`, `transformaciones.py`, `utilidades.py`) y las extendemos y/o adaptamos para nuestras necesidades.
-
-- **Mantenibilidad**: Al seguir una estructura similar a los ejemplos proporcionados, cualquier miembro del equipo puede entender y trabajar con el código más fácilmente.
-
-### Flujo de Desarrollo
-
-1. **Fase 0 - Entorno**: Configuraremos nuestro IDE instalando las dependencias necesarias y crearemos los directorios y archivos mencionados, utilizaremos GIT para tener un versionado del codigo y tener una trazabilidad clara.
-
-2. **Fase 1 - Base y Entorno**: Configuración inicial del entorno 3D, carga de shaders, configuración de cámara básica, y renderizado de primitivas simples (cubo, esfera) para validar el pipeline.
-
-3. **Fase 2 - Tablero y Espacio de Juego**: Implementación del tablero tridimensional visible y sistema básico de posicionamiento en el espacio 3D.
-
-4. **Fase 3 - Serpiente Básica**: Creación de la clase `Segmento` y `Snake`, renderizado de un segmento simple que pueda trasladarse en el espacio.
-
-5. **Fase 4 - Movimiento y Control**: Implementación del sistema de control mediante teclado y lógica de movimiento de la serpiente con transformaciones geométricas.
-
-6. **Fase 5 - Sistema de Comida**: Implementación de objetos de comida que aparecen en el tablero y detección de colisiones cuando la serpiente los recoje.
-
-7. **Fase 6 - Crecimiento y Mecánicas**: Implementación del sistema de crecimiento de la serpiente y mecánicas de juego básicas.
-
-8. **Fase 7 - Cámara Interactiva**: Mejora del sistema de cámara para incluir modos libre y tercera persona, con controles intuitivos.
-
-9. **Fase 8 - Pulido y Optimización**: Ajustes visuales, optimización de rendimiento, y pruebas finales.
-
-### Técnicas y Conceptos Aplicados
-
-- **Shader Programming**: Programación en GLSL para vertex y fragment shaders, manejo de uniforms y atributos.
-- **VBOs (Vertex Buffer Objects)**: Para almacenar datos de vértices en la GPU y optimizar el renderizado. Técnica complementaria a los shaders (los shaders procesan los datos almacenados en los VBOs).
-- **Sistema de Coordenadas 3D**: Manejo de coordenadas en el espacio 3D y transformaciones entre sistemas de coordenadas.
-- **Colisiones Básicas**: Detección de intersecciones entre la serpiente y objetos de comida, y con los límites del tablero.
-- **Programación Orientada a Objetos**: Uso de clases para modelar los componentes del juego.
+Mantenemos **Python 3**, **Pygame** y **PyOpenGL**. Sin embargo, hemos añadido el uso intensivo de:
+* **`glBlendFunc`**: Para manejar las transparencias de los cubos inactivos.
+* **`glPushMatrix` / `glPopMatrix`**: Esencial ahora que dibujamos cientos de pequeños cubos; necesitamos aislar la transformación de cada uno para que no afecte al siguiente.
 
 ---
 
 ## 5. Desarrollo y Avances del Proyecto
 
-En esta primera iteración nos hemos centrado en sentar una base sólida reutilizando la
-infraestructura del proyecto de referencia `SHADER` y adaptándola a la estructura del
-Snake 3D. Hemos preferido avanzar por capas, empezando por todo lo que tiene que ver con
-ventana, cámara y escena básica, antes de entrar en la lógica propia del juego.
+Debido al cambio de enfoque, hemos reescrito gran parte de la lógica de las fases 2 y 3. A continuación, documentamos el estado actual del proyecto tras esta refactorización.
 
-### Fase 0 - Creación de estructura y configuración común
+### Fase 0: Estructura y Configuración (Mantenido)
 
-Empezamos creando la estructura de directorios que definimos en la sección de Metodología
-(`proyecto_snake_3d/` con sus módulos principales, carpeta de shaders y carpeta de texturas)
-y, a partir de ahí, trasladamos la configuración global desde `SHADER/configuracion.py` a
-`configuracion.py` del proyecto Snake. En esta copia aprovechamos para añadir algunas
-constantes lógicas del juego (tamaño del tablero en celdas y tamaño de cada celda) que
-usaremos más adelante cuando implementemos el tablero y el movimiento de la serpiente.
+Conservamos la estructura de archivos modular (`main.py`, `configuracion.py`, `transformaciones.py`, etc.). Sin embargo, hemos actualizado `configuracion.py` para definir las propiedades del nuevo "Mundo Cúbico":
+* Definimos `GRID_SIZE` (tamaño del cubo, ej. 10x10x10).
+* Añadimos colores con canal Alpha (RGBA) para soportar transparencias (`COLOR_CUBO_VACIO`).
+* Ajustamos el FOV de la cámara para abarcar el volumen completo del cubo desde una perspectiva isométrica.
 
-En paralelo portamos también los módulos de infraestructura gráfica que no dependen aún de
-la lógica del juego: `camara.py`, `transformaciones.py`, `texturas.py`, `luces.py`,
-`utilidades.py` y `usuario.py`. La idea ha sido mantener el comportamiento probado de
-SHADER (cámara orbital, carga de texturas, iluminación básica y elementos auxiliares de
-dibujo), pero documentando el código desde la perspectiva del Snake 3D y dejando claro que
-estas piezas se usarán como base para las fases posteriores.
+### Fase 1: Ventana y Renderizado Base (Adaptado)
 
-#### Módulos portados y adaptados desde `SHADER`
+En esta fase, validamos que podíamos abrir la ventana OpenGL y configurar el contexto para transparencias.
+* Activamos `GL_BLEND` para permitir que los objetos se vean a través de otros.
+* Cambiamos la posición de la cámara: ahora está **fija** en una posición diagonal, mirando hacia el centro del mundo $(0,0,0)$. Ya no usamos la cámara orbital con el ratón de la versión anterior, ya que el control pasará a ser la rotación del cubo con el teclado.
 
-En esta fase hemos creado y adaptado varios módulos clave tomando como referencia directa
-el proyecto `SHADER`:
+### Fase 2: El "Mundo de Cristal" (Refactorización Completa)
 
-- `configuracion.py`: centralizamos constantes de ventana, proyección, cámara, ejes y
-  rejilla, y añadimos parámetros lógicos del tablero (`TABLERO_ANCHO`, `TABLERO_LARGO`,
-  `TAMANO_CELDA`, etc.) pensando ya en cómo se va a mover la serpiente sobre un espacio
-  discreto pero representado en 3D.
-- `camara.py`: implementamos una cámara orbital basada en `SHADER/camara.py`, con `pitch`,
-  `yaw`, `roll` y `radio`, además de métodos de ajuste y presets (`reset`, `set_capture`)
-  orientados a explorar el tablero del Snake 3D de forma cómoda.
-- `transformaciones.py`: reutilizamos las funciones `trasladar`, `rotar`, `escalar` y
-  `transformar` de `SHADER/transformaciones.py` como capa auxiliar para aplicar
-  transformaciones 3D a los objetos del juego.
-- `texturas.py`: mantenemos una función `cargar_textura` que usa Pygame y OpenGL para
-  registrar texturas 2D, lista para asociarla más adelante al tablero, la serpiente y la
-  comida.
-- `luces.py`: definimos la clase `Iluminacion`, encargada de configurar los uniforms de
-  iluminación en los shaders (`lightPos`, `viewPos`, `lightAmbient`, etc.), siguiendo la
-  misma filosofía que en `SHADER/luces.py`.
-- `utilidades.py`: agrupamos el dibujado de ejes y rejilla (`dibujar_elementos_auxiliares`,
-  `dibujar_ejes`, `dibujar_rejilla`, …) reutilizando la idea de `SHADER/utilidades.py` pero
-  apoyándonos en las constantes de `configuracion.py`.
-- `usuario.py`: trasladamos la lógica de entrada para la cámara
-  (`procesar_eventos_raton`, `consultar_estado_teclado`), prácticamente igual que en
-  `SHADER/usuario.py`, y la dejamos preparada para ampliarla más adelante con los controles
-  propios de la serpiente.
+Aquí es donde el proyecto cambió radicalmente. Abandonamos la rejilla plana y construimos el **Tablero Volumétrico**.
 
-### Fase 1 - Ventana, cámara orbital y escena base
+* **Implementación**: La clase `Tablero` ahora itera en tres dimensiones ($x, y, z$).
+* **Visualización**: Para cada posición de la rejilla, dibujamos un cubo unitario.
+    * Si la celda está vacía, se dibuja con un color azulado y un valor Alpha bajo (0.15), creando un efecto de "fantasma" o cristal.
+    * Dibujamos también las aristas (wireframe) de cada celda para que la cuadrícula 3D sea legible visualmente.
+* **Resultado**: Al ejecutar esta fase, obtenemos un cubo gigante flotando en el espacio, con una estructura interna visible que da una gran sensación de profundidad.
 
-Con la infraestructura lista, montamos el primer `main.py` funcional del proyecto. Aquí
-configuramos la ventana de Pygame con contexto OpenGL, aplicamos la proyección en
-perspectiva y creamos una cámara orbital inicial (ligeramente inclinada y mirando al
-origen), reutilizando la clase `Camara` que acabábamos de portar. Sobre esta configuración
-dibujamos únicamente los ejes de coordenadas y una rejilla en el plano XZ usando
-`utilidades.py`, lo suficiente para validar que la cámara responde bien tanto al ratón como
-al teclado.
+ 
+### Fase 3: La Serpiente en el Vóxel (Completada)
 
-Esta escena base nos deja ya un esqueleto claro de bucle principal (`bucle_principal` en
-`main.py`) que más adelante utilizaremos para integrar el tablero, la serpiente y los
-objetos de comida. A partir de aquí, el siguiente paso natural será centrar la Fase 2 en el
-diseño del tablero tridimensional y su mapeo a coordenadas lógicas de juego.
+Una vez tuvimos el cubo volumétrico, necesitábamos colocar a la serpiente sobre él.
 
-Para dejar constancia visual de esta fase:
+* **Coordenadas 3D**: Actualizamos la clase `Segmento` para almacenar $(x, y, z)$. Antes solo guardaba $(x, z)$.
+* **Inicialización**: Programamos la lógica para que la serpiente aparezca inicialmente en la **cara frontal** del cubo (la cara con Z positivo máximo).
+* **Interacción Básica**: Implementamos en el `main.py` la lógica para que, al presionar las flechas del teclado, se modifiquen las variables de rotación global del mundo (`rot_x`, `rot_y`).
 
+**Estado Actual**: Tenemos un sistema funcional donde vemos el cubo de cristal translúcido y una serpiente verde adherida a su superficie. Podemos usar las flechas del teclado para rotar el cubo completo y examinar la serpiente desde cualquier ángulo, validando que las transformaciones jerárquicas funcionan correctamente.
 
-![Fase 1 - Infraestructura base](FasesCompletadas/Screenshot%202025-11-16%20203258_Untill_Fase1.png)
+![Fase 3 - Tablero 3D](FasesCompletadas/Hasta_Fase3.gif)
 
-### Fase 2 - Tablero 3D y sistema básico de posicionamiento
+Con este gid del estado actual, podemos validar que hemos alcanzado el hito de la **Fase 3**.
 
-En la segunda fase nos hemos centrado en sustituir la rejilla genérica de depuración por un
-tablero 3D real, con las mismas dimensiones lógicas que usaremos más adelante para el
-movimiento de la serpiente. La idea es que lo que vemos en pantalla ya represente el área
-de juego real, no sólo una referencia visual abstracta.
+Hasta este punto logramos renderizar la estructura volumétrica del mundo (el "cubo de cristal") utilizando  el *Alpha Blending* para las transparencias, lo que nos permite visualizar la profundidad interna del tablero sin perder la definición de la forma cúbica, en ciertos angulos la transparencia se nos va pero lo puliremos cuando hagamos que la serpiente se mueva junto con el cubo.  
 
-Para ello creamos el módulo `tablero.py` con la clase `Tablero`, que toma como referencia
-las constantes `TABLERO_ANCHO`, `TABLERO_LARGO` y `TAMANO_CELDA` definidas en
-`configuracion.py`. El tablero se construye centrado en el origen del espacio 3D y cada
-celda se dibuja como un quad en el plano XZ, alternando dos colores (`COLOR_TABLERO_BASE`
-y `COLOR_TABLERO_ALT`) para que se distinga bien la estructura en cuadrícula. Además,
-añadimos un borde (`COLOR_TABLERO_BORDE`) que marca de forma clara los límites del área
-jugable.
-
-Al mismo tiempo definimos en `Tablero` un método `obtener_posicion_mundo(celda_x, celda_z)`
-que nos devuelve la posición central de cualquier celda en coordenadas del mundo. Con esto
-dejamos resuelto el mapeo entre índices discretos de tablero (0..ancho-1, 0..largo-1) y
-posiciones 3D, que es justo lo que necesitaremos cuando la serpiente empiece a moverse.
-
-Por último, actualizamos `main.py` para instanciar un `Tablero` y dibujarlo en cada frame
-dentro de `renderizar`, manteniendo los ejes como referencia pero desactivando la rejilla
-auxiliar. De esta forma, la escena que vemos ahora ya es el tablero definitivo del Snake 3D
-sobre el que construiremos las siguientes fases (serpiente, comida y colisiones).
-
-Para ilustrar visualmente el resultado de esta fase, hemos generado un GIF que recoge el
-estado del proyecto hasta la Fase 2:
-
-![Fase 2 - Tablero 3D](FasesCompletadas/Untill_Fase2.gif)
-
-### Fase 3 - Serpiente básica sobre el tablero
-
-En la tercera fase empezamos por fin a dar forma a la serpiente, aunque todavía sin
-movimiento. Lo que buscamos aquí es tener una representación clara, apoyada en el tablero
-que ya teníamos, y comprobar que el modelo de datos encaja bien con el sistema de
-coordenadas por celdas.
-
-Por un lado definimos el módulo `segmento.py`, donde implementamos la clase `Segmento`. Cada
-segmento guarda su posición en coordenadas lógicas de tablero (`celda_x`, `celda_z`) y un
-color propio. Para dibujarlo, pedimos al `Tablero` la posición central de su celda mediante
-`obtener_posicion_mundo` y usamos las funciones de `transformaciones.py` para colocar y
-escalar un cubo unitario sobre esa posición. El cubo queda ligeramente elevado respecto al
-plano del tablero para que visualmente se entienda que “descansa” encima de él y no se
-mezcla con la textura del suelo.
-
-Por otro lado creamos la clase `Snake` en `snake.py`. En esta fase la serpiente es simplemente
-una lista de `Segmento`: generamos una pequeña cadena de tres segmentos, con la “cabeza” en
-el centro del tablero y el resto del cuerpo alineado detrás en el eje Z. Aprovechamos para
-introducir dos colores nuevos en `configuracion.py` (`COLOR_SERPIENTE_CABEZA` y
-`COLOR_SERPIENTE_CUERPO`), de forma que visualmente se distinga el primer segmento del resto,
-aunque todavía no se esté moviendo.
-
-Finalmente, actualizamos `main.py` para instanciar una `Snake` junto con el `Tablero` e
-integrarla en la función `renderizar`. Ahora, además del tablero y los ejes auxiliares, la
-escena muestra esta serpiente estática colocada correctamente sobre el área de juego. En la
-próxima fase utilizaremos esta base para darle movimiento real y empezar a trabajar con la
-lógica de control y colisiones.
-
-Para ilustrar visualmente el resultado de esta fase tenemos el siguiente gif:
-
-![Fase 3 - Serpiente básica 3D](FasesCompletadas/Untill_Fase3.gif)
+Por el momento, la serpiente se posiciona correctamente sobre la superficie (en este caso, en la cara frontal) y hemos comprobado que la lógica de **rotación global del mundo** funciona de manera fluida y estable. Al interactuar con las flechas del teclado, el cubo gira suavemente respondiendo al input sin presentar vibraciones (*jitter*) ni caídas de rendimiento, lo que confirma que nuestra gestión de la pila de matrices (`glPushMatrix`/`glPopMatrix`) está funcionando muy bien.
 
 ---
 
 ## 6. Próximos Pasos
 
-*[Esta sección se actualizará con las actividades planificadas y objetivos concretos hasta la entrega final del proyecto. Incluirá un cronograma de trabajo, tareas asignadas a cada miembro del equipo, y hitos importantes.]*
+Dado que hemos cambiado la mecánica base, hemos redefinido las siguientes fases para lograr el objetivo del "Snake Planetario".
+
+### Fase 4: Movimiento "Crawler"
+El próximo desafío es hacer que la serpiente se mueva automáticamente.
+* Implementar vectores de dirección 3D.
+* Detectar cuando la serpiente llega a un borde del cubo ($x > limite$, etc.).
+
+### Fase 5: Transición de Caras y Rotación Automática
+Esta será la fase más compleja y visualmente impactante.
+* Implementar la lógica: *"Si la serpiente cruza el borde derecho, el mundo debe rotar 90 grados hacia la izquierda"*.
+* Suavizar esta rotación para que no sea instantánea, sino una animación fluida que reoriente la nueva cara hacia el frente de la cámara.
+
+### Fase 6: Comida y Crecimiento 3D
+* Generar comida (cubos rojos) aleatoriamente, pero asegurando que aparezcan solo en las **caras superficiales** del cubo grande, nunca en el interior hueco.
+
+### Fase 7: Pulido Visual
+* Añadir efectos de iluminación para resaltar los bordes.
+* Ajustar los colores y la opacidad para mejorar la jugabilidad.
 
 ---
 
@@ -318,4 +148,4 @@ Para ilustrar visualmente el resultado de esta fase tenemos el siguiente gif:
 
 ---
 
-**Última actualización**: 16 de Noviembre
+**Última actualización**: 23 de Noviembre

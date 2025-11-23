@@ -1,17 +1,23 @@
-# Proyecto Snake 3D - comida.py
-#
-# Objetivo general:
-# - Gestionar los objetos de comida que aparecen en el tablero, incluyendo su posición,
-#   su generación y su interacción con la serpiente cuando son recogidos.
-#
-# Objetivos específicos:
-# - Definir cómo y dónde se crean los objetos de comida dentro de los límites del tablero.
-# - Mantener la información necesaria para dibujar cada objeto de comida en el espacio 3D.
-# - Detectar cuándo la serpiente recoge un objeto de comida (por ejemplo, cuando la cabeza
-#   de la serpiente coincide con la posición de la comida).
-# - Integrarse con la lógica de la serpiente para desencadenar el crecimiento cuando se
-#   recojan estos objetos.
-# - Permitir diferentes estrategias de generación (posiciones aleatorias, controladas, etc.),
-#   si fuera necesario en fases posteriores del proyecto.
+"""
+Proyecto Snake 3D - comida.py
 
+En este módulo centralizaremos, en fases posteriores, la lógica asociada a los
+objetos de comida dentro del mundo cúbico (vóxel) de nuestro Snake planetario.
 
+La idea es que este archivo sea el punto de referencia para:
+
+- Definir la representación de cada unidad de comida en coordenadas discretas
+  del cubo (x, y, z).
+- Generar posiciones de comida válidas sobre la superficie del cubo gigante,
+  evitando celdas internas no jugables.
+- Detectar cuándo la cabeza de la serpiente coincide con la posición de una
+  comida y notificar este evento al sistema de juego.
+- Integrarse con la lógica de crecimiento de la serpiente, de forma que cada
+  recolección pueda traducirse en la adición de nuevos segmentos.
+- Explorar distintas estrategias de generación (aleatoria, controlada, por
+  niveles, etc.) en el contexto del Snake planetario.
+
+En el estado actual del proyecto mantenemos este módulo como esqueleto
+documentado para dejar claramente recogido el diseño previsto y su papel en las
+fases centradas en la mecánica de comida y crecimiento 3D.
+"""

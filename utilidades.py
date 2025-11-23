@@ -1,11 +1,21 @@
 """
 Proyecto Snake 3D - utilidades.py
 
-Aquí agrupamos funciones de apoyo visual que nos ayudan a entender la escena 3D
-mientras desarrollamos el juego: ejes de coordenadas y una rejilla sobre el plano.
+En este módulo agrupamos funciones de apoyo visual que nos ayudan a entender la
+escena 3D mientras desarrollamos y depuramos el juego: ejes de coordenadas y
+rejilla sobre el plano XZ.
 
-Es prácticamente la misma idea que en `SHADER/utilidades.py`, adaptada a las
-constantes definidas en `configuracion.py`.
+La idea es muy similar a la de `SHADER/utilidades.py`: disponer de elementos
+geométricos simples que nos permitan:
+
+- Verificar rápidamente la orientación de la escena.
+- Localizar el origen y los rangos de los ejes.
+- Superponer una rejilla de referencia cuando sea útil comparar con el mundo
+  cúbico de vóxeles.
+
+Aun cuando en la versión de “Cubo Planetario” la referencia principal pasa a
+ser el propio tablero volumétrico, estas utilidades siguen siendo valiosas
+durante el desarrollo para contrastar transformaciones y ángulos de cámara.
 """
 
 from OpenGL.GL import (
@@ -43,11 +53,12 @@ from configuracion import (
 
 def dibujar_elementos_auxiliares(ejes: bool = False, rejilla: bool = False) -> None:
     """
-    Dibujamos ejes y/o rejilla según lo que necesitemos en cada momento.
+    Dibuja ejes y/o rejilla según las opciones indicadas.
 
-    Durante las primeras fases del proyecto nos apoyamos mucho en estos elementos
-    para comprobar que la cámara está bien configurada y que el origen está donde
-    esperamos.
+    Durante las primeras fases del proyecto, y en particular mientras iteramos
+    la configuración de cámara y transformaciones globales, estos elementos nos
+    sirven para comprobar que el origen está donde esperamos y que no se
+    producen inversiones de ejes no deseadas.
     """
     if ejes:
         dibujar_ejes()
@@ -56,7 +67,10 @@ def dibujar_elementos_auxiliares(ejes: bool = False, rejilla: bool = False) -> N
 
 
 def dibujar_ejes() -> None:
-    """Dibujamos los tres ejes principales X, Y y Z con sus flechas."""
+    """
+    Dibuja los tres ejes principales X, Y y Z con sus respectivas flechas en el
+    extremo positivo.
+    """
     dibujar_eje_con_flecha(EJE_X_MIN, 0, 0, EJE_X_MAX, 0, 0, COLOR_EJE_X, rotacion=(90, 0, 1, 0))
     dibujar_eje_con_flecha(0, EJE_Y_MIN, 0, 0, EJE_Y_MAX, 0, COLOR_EJE_Y, rotacion=(-90, 1, 0, 0))
     dibujar_eje_con_flecha(0, 0, EJE_Z_MIN, 0, 0, EJE_Z_MAX, COLOR_EJE_Z)
@@ -72,7 +86,10 @@ def dibujar_eje_con_flecha(
     color: tuple[float, float, float],
     rotacion: tuple[float, float, float, float] | None = None,
 ) -> None:
-    """Dibujamos un eje como un segmento y añadimos una pequeña flecha en el extremo positivo."""
+    """
+    Dibuja un eje como segmento entre dos puntos y añade una pequeña flecha en
+    el extremo positivo para indicar la dirección.
+    """
     dibujar_segmento(x1, y1, z1, x2, y2, z2, color)
     glColor3f(*color)
     # Posicionamos la flecha en el extremo
@@ -95,7 +112,7 @@ def dibujar_segmento(
     z2: float,
     color: tuple[float, float, float],
 ) -> None:
-    """Dibujamos un segmento sencillo entre dos puntos."""
+    """Dibuja un segmento sencillo entre dos puntos en el espacio 3D."""
     glBegin(GL_LINES)
     glColor3f(*color)
     glVertex3f(x1, y1, z1)
@@ -104,7 +121,10 @@ def dibujar_segmento(
 
 
 def dibujar_cono() -> None:
-    """Usamos un cono muy simple para representar la punta de flecha de un eje."""
+    """
+    Dibuja un cono muy simple que utilizamos como punta de flecha para los
+    ejes de referencia.
+    """
     cone = gluNewQuadric()
     gluCylinder(
         cone,
@@ -118,10 +138,11 @@ def dibujar_cono() -> None:
 
 def dibujar_rejilla() -> None:
     """
-    Dibujamos una rejilla en el plano XZ.
+    Dibuja una rejilla en el plano XZ.
 
-    Nos sirve como referencia visual del "suelo" sobre el que más adelante
-    colocaremos el tablero del Snake.
+    Esta rejilla nos sirve como referencia visual del “suelo” y es
+    especialmente útil para contrastar posiciones relativas cuando combinamos
+    el mundo plano de depuración con el mundo cúbico volumétrico.
     """
     glColor3f(*REJILLA_COLOR)
     glBegin(GL_LINES)
@@ -134,8 +155,12 @@ def dibujar_rejilla() -> None:
 
 
 def dibujar_linea(x1: float, y1: float, z1: float, x2: float, y2: float, z2: float) -> None:
-    """Dibujamos una línea en el plano XZ escalada por el paso de la rejilla."""
+    """
+    Dibuja una línea en el plano XZ escalada por el paso de la rejilla, a
+    partir de dos puntos expresados en coordenadas discretas de la rejilla.
+    """
     glVertex3f(x1 * REJILLA_PASO, y1, z1 * REJILLA_PASO)
     glVertex3f(x2 * REJILLA_PASO, y2, z2 * REJILLA_PASO)
+
 
 

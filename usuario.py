@@ -1,10 +1,19 @@
 """
 Proyecto Snake 3D - usuario.py
 
-De momento reutilizamos la misma lógica de entrada que en `SHADER/usuario.py`
-para controlar la cámara con ratón y teclado. Más adelante ampliaremos este
-archivo con las teclas específicas del juego (giro de la serpiente, reinicio,
-cambio de modo de cámara, etc.).
+En este módulo gestionamos la entrada del usuario pensada originalmente para
+controlar una cámara orbital (ratón y teclado), siguiendo de cerca la lógica
+del proyecto de referencia `SHADER/usuario.py`.
+
+Aun cuando en la versión actual del Snake planetario hemos pasado a controlar
+principalmente la rotación del mundo cúbico desde `main.py`, mantenemos este
+archivo como infraestructura de entrada:
+
+- Para seguir disponiendo de una cámara orbital de apoyo durante el desarrollo.
+- Para facilitar la experimentación con distintos modos de cámara (por ejemplo,
+  alternar entre vista fija y vista orbital).
+- Como base sobre la que integraremos, en fases posteriores, teclas específicas
+  del juego (reinicio, cambio de modo de cámara, atajos de depuración, etc.).
 """
 
 import pygame
@@ -39,11 +48,11 @@ ultimo_x, ultimo_y = 0, 0
 
 def procesar_eventos_raton(evento: pygame.event.Event, camara) -> None:
     """
-    Procesamos los eventos de ratón para rotar y hacer zoom con la cámara.
+    Procesa los eventos de ratón para rotar y hacer zoom con la cámara orbital.
 
-    Esta función es prácticamente un calco de la que hemos usado en SHADER: nos
-    permite orbitar alrededor de la escena de forma muy cómoda mientras
-    desarrollamos el resto de componentes del juego.
+    Esta función reproduce la filosofía del proyecto `SHADER`: nos permite
+    orbitar alrededor de la escena de forma cómoda mientras desarrollamos y
+    validamos los distintos componentes del juego.
     """
     global boton_izquierdo_presionado, ultimo_x, ultimo_y
 
@@ -69,11 +78,12 @@ def procesar_eventos_raton(evento: pygame.event.Event, camara) -> None:
 
 def consultar_estado_teclado(camara, delta_time: float) -> None:
     """
-    Leemos el estado del teclado para ajustar la cámara.
+    Lee el estado del teclado y ajusta los parámetros de la cámara orbital.
 
-    Mantendremos estos controles tal cual durante las primeras fases, y en
-    cuanto tengamos la serpiente en marcha añadiremos aquí las teclas de
-    movimiento del juego.
+    Mantenemos estos controles como soporte de desarrollo: mientras el modo
+    principal de juego se basa en la rotación global del mundo cúbico, esta
+    interfaz nos sigue resultando útil para inspeccionar la escena desde otros
+    ángulos y preparar futuras ampliaciones de control.
     """
     keys = pygame.key.get_pressed()
 
