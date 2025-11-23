@@ -33,7 +33,7 @@ En este nuevo enfoque, el tablero no es una superficie plana, sino un volumen de
 2.  **Cámara y Transformaciones**: En lugar de orbitar la cámara alrededor de la escena, hemos fijado la cámara (como primer objetivo, luego plantearemos hacer nuevas funciones para que la cámara pueda moverse hacia primera persona) y aplicamos transformaciones de rotación global a todo el "mundo" basándonos en el input del usuario.
 3.  **Pipeline**: Seguimos utilizando el pipeline moderno con OpenGL y Python, pero ahora gestionando la profundidad y la transparencia (Alpha Blending) para lograr un efecto de "cubo de cristal".
 
-Este documento detalla cómo hemos adaptado nuestra base de código inicial para soportar este nuevo paradigma y los avances logrados hasta la Fase 3.
+Este documento detalla cómo hemos adaptado nuestra base de código inicial para soportar este nuevo paradigma y los avances logrados hasta la Fase 4.
 
 ---
 
@@ -114,8 +114,23 @@ Una vez tuvimos el cubo volumétrico, necesitábamos colocar a la serpiente sobr
 Con este gid del estado actual, podemos validar que hemos alcanzado el hito de la **Fase 3**.
 
 Hasta este punto logramos renderizar la estructura volumétrica del mundo (el "cubo de cristal") utilizando  el *Alpha Blending* para las transparencias, lo que nos permite visualizar la profundidad interna del tablero sin perder la definición de la forma cúbica, en ciertos angulos la transparencia se nos va pero lo puliremos cuando hagamos que la serpiente se mueva junto con el cubo.  
-
+ 
 Por el momento, la serpiente se posiciona correctamente sobre la superficie (en este caso, en la cara frontal) y hemos comprobado que la lógica de **rotación global del mundo** funciona de manera fluida y estable. Al interactuar con las flechas del teclado, el cubo gira suavemente respondiendo al input sin presentar vibraciones (*jitter*) ni caídas de rendimiento, lo que confirma que nuestra gestión de la pila de matrices (`glPushMatrix`/`glPopMatrix`) está funcionando muy bien.
+
+### Fase 4: Movimiento "Crawler" sobre la Cara Frontal (Completada)
+
+En esta fase nos hemos centrado en que la serpiente deje de ser un simple elemento estático y pase a comportarse como un **"crawler"** clásico sobre la cara frontal del cubo.
+
+* **Configuración de movimiento**: En `configuracion.py` hemos definido un `TIEMPO_PASO` (150 ms por defecto) y un conjunto de vectores de dirección (`DIR_UP`, `DIR_DOWN`, `DIR_LEFT`, `DIR_RIGHT`, `DIR_STOP`) que describen hacia dónde se desplaza la serpiente en el espacio discreto $(x, y, z)$.
+* **Serpiente como entidad dinámica**: En `snake.py` la serpiente ahora mantiene su propio estado interno de movimiento (`direccion` actual, `proxima_direccion`, acumulador de tiempo y bandera `vivo`). Cada cierto intervalo de tiempo, calculado con `TIEMPO_PASO`, la serpiente avanza un segmento en la dirección indicada, actualizando la cabeza y desplazando la cola para simular el movimiento continuo.
+* **Separación de controles**: En `main.py` hemos separado claramente dos tipos de input:
+  * Las **flechas del teclado** controlan la dirección de la serpiente (`cambiar_direccion`), pero solo registramos giros válidos (no permitimos girar 180° sobre sí misma).
+  * Las teclas **WASD** pasan a controlar exclusivamente la **rotación del mundo** (`rot_x`, `rot_y`), permitiendo seguir inspeccionando el cubo desde distintos ángulos mientras la serpiente se desplaza sola.
+* **Control de rango lógico**: A nivel interno, `snake.mover` comprueba que el siguiente paso esté dentro del rango discreto de la rejilla antes de actualizar los segmentos. Esto no forma parte de la fantasía jugable (en nuestro diseño el cubo es continuo y solo existe la autocolisión), sino que es simplemente un detalle técnico para mantener la serpiente dentro del espacio de índices de nuestro modelo de datos mientras preparamos la lógica planetaria de cambio de cara (Fase 5).
+
+![Fase 4 - Tablero 3D](FasesCompletadas/Hasta_Fase4.gif)
+
+**Estado Actual tras Fase 4**: Ahora tenemos una serpiente que **se mueve de forma autónoma** sobre la cara frontal, con controles suaves y separados para el mundo y para la dirección de la propia serpiente. El comportamiento ya se acerca más a la fantasía de "Snake Planetario": el cubo puede seguir rotando mientras la serpiente avanza por su superficie, quedando pendiente para la siguiente fase que ese avance permita cruzar de una cara a otra de manera natural.
 
 ---
 
@@ -123,10 +138,8 @@ Por el momento, la serpiente se posiciona correctamente sobre la superficie (en 
 
 Dado que hemos cambiado la mecánica base, hemos redefinido las siguientes fases para lograr el objetivo del "Snake Planetario".
 
-### Fase 4: Movimiento "Crawler"
-El próximo desafío es hacer que la serpiente se mueva automáticamente.
-* Implementar vectores de dirección 3D.
-* Detectar cuando la serpiente llega a un borde del cubo ($x > limite$, etc.).
+### Fase 4: Movimiento "Crawler" (Completada)
+Esta fase ya está implementada. Hemos dotado a la serpiente de movimiento automático sobre la cara frontal, con control de dirección mediante flechas y temporización basada en `TIEMPO_PASO`, manteniendo la idea de que el único "game over" real será, en fases futuras, la autocolisión. Para más detalle, ver la sección de avances de la **Fase 4** en el apartado 5.
 
 ### Fase 5: Transición de Caras y Rotación Automática
 Esta será la fase más compleja y visualmente impactante.

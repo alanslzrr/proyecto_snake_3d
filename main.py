@@ -31,7 +31,7 @@ def main():
     pygame.init()
     display = (SCREEN_WIDTH, SCREEN_HEIGHT)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Snake 3D - Fase 3: Estructura Vóxel")
+    pygame.display.set_caption("Snake 3D - Fase 4: Movimiento Crawler")
 
     # Configuración básica de OpenGL: prueba de profundidad y color de fondo.
     glEnable(GL_DEPTH_TEST)
@@ -51,36 +51,48 @@ def main():
     snake = Snake(tablero)
     
     # Variables de rotación del mundo (acumulamos la rotación en función de la
-    # entrada del usuario con las teclas de dirección).
+    # entrada del usuario con las teclas WASD para inspeccionar el cubo).
     rot_x = 0.0
     rot_y = 0.0
     
     clock = pygame.time.Clock()
 
     while True:
-        dt = clock.tick(FPS) / 1000.0 # Delta time en segundos
+        dt = clock.tick(FPS) / 1000.0  # Delta time en segundos
 
         # 1. Entrada (input)
-        #    Aquí gestionamos eventos de ventana y teclado. De momento sólo
-        #    escuchamos el cierre de la ventana y las flechas de dirección.
+        #    Aquí gestionamos eventos de ventana y teclado.
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
+            # --- INPUT SERPIENTE (Eventos discretos para evitar doble giro) ---
+            if event.type == pygame.KEYDOWN:
+                if event.key == K_UP:
+                    snake.cambiar_direccion(DIR_UP)
+                elif event.key == K_DOWN:
+                    snake.cambiar_direccion(DIR_DOWN)
+                elif event.key == K_LEFT:
+                    snake.cambiar_direccion(DIR_LEFT)
+                elif event.key == K_RIGHT:
+                    snake.cambiar_direccion(DIR_RIGHT)
 
-        # Control de rotación del cubo gigante mediante teclas de dirección.
-        # Cada flecha modifica el ángulo acumulado en el eje correspondiente.
+        # Control de rotación del cubo gigante mediante teclas WASD.
+        # Cada tecla modifica el ángulo acumulado en el eje correspondiente.
         keys = pygame.key.get_pressed()
-        if keys[K_LEFT]:
+        if keys[K_a]:  # Izquierda
             rot_y -= VELOCIDAD_ROTACION_MUNDO * dt
-        if keys[K_RIGHT]:
+        if keys[K_d]:  # Derecha
             rot_y += VELOCIDAD_ROTACION_MUNDO * dt
-        if keys[K_UP]:
+        if keys[K_w]:  # Arriba
             rot_x -= VELOCIDAD_ROTACION_MUNDO * dt
-        if keys[K_DOWN]:
+        if keys[K_s]:  # Abajo
             rot_x += VELOCIDAD_ROTACION_MUNDO * dt
 
-        # 2. Renderizado
+        # 2. Actualización de la lógica de la serpiente en función del tiempo.
+        snake.actualizar(dt)
+
+        # 3. Renderizado
         #    Limpiamos los buffers, colocamos la cámara en una posición fija
         #    tipo isométrica y aplicamos la rotación global del mundo antes de
         #    dibujar el tablero y la serpiente.

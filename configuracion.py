@@ -78,3 +78,17 @@ FPS = 60
 # a las teclas de dirección. Ajustando este valor controlamos la suavidad
 # y rapidez con la que el cubo planetario reacciona al input del usuario.
 VELOCIDAD_ROTACION_MUNDO = 90.0
+
+# --- FASE 4: Configuración de Movimiento de la Serpiente ---
+#
+# Tiempo entre pasos de la serpiente (en segundos).
+# 0.15 = 150ms. Cuanto menor sea el número, más rápida es la serpiente.
+TIEMPO_PASO = 0.15
+
+# Vectores de Dirección (x, y, z)
+# Nota: En la cara frontal (Z positiva), 'Arriba' es +Y, 'Derecha' es +X.
+DIR_UP    = (0, 1, 0)
+DIR_DOWN  = (0, -1, 0)
+DIR_LEFT  = (-1, 0, 0)
+DIR_RIGHT = (1, 0, 0)
+DIR_STOP  = (0, 0, 0)  # Estado inicial o de pausa
