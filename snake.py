@@ -7,6 +7,12 @@ Fase 4:
 - Implementamos el movimiento automático tipo "crawler" sobre la cara frontal.
 - Gestionamos la cola de segmentos manteniendo el tamaño constante.
 - Añadimos un control de rango de la rejilla lógica (sin cambio de cara aún).
+
+Fase 5:
+- Detectamos cruces de borde y aplicamos transiciones de cara manteniendo la
+  ilusión del “frente infinito”.
+- Rotamos las coordenadas discretas de todos los segmentos para que, tras la
+  animación visual del cubo, la lógica continúe operando sobre la cara frontal.
 """
 
 from configuracion import (
@@ -75,19 +81,30 @@ class Snake:
     def actualizar(self, dt: float):
         """
         Avanza la lógica de juego según el delta time.
+
+        Returns:
+            tuple[str | None, float]: información sobre la rotación solicitada.
+            - ('x'|'y', +/-90.0) cuando hay transición de cara.
+            - (None, 0.0) si no ocurre nada especial.
         """
         if not self.vivo:
-            return
+            return (None, 0.0)
 
         self.tiempo_acumulado += dt
+
+        rotacion_solicitada = (None, 0.0)
 
         # Si ha pasado suficiente tiempo, damos un "paso".
         if self.tiempo_acumulado >= TIEMPO_PASO:
             self.tiempo_acumulado = 0.0
-            self.mover()
+            rotacion_solicitada = self.mover()
+
+        return rotacion_solicitada
 
     def mover(self):
-        """Calcula la nueva posición y actualiza los segmentos."""
+        """
+        Calcula la nueva posición, gestiona transiciones de cara y actualiza los segmentos.
+        """
         # 1. Actualizamos la dirección oficial.
         self.direccion = self.proxima_direccion
         dx, dy, dz = self.direccion
@@ -98,16 +115,26 @@ class Snake:
         ny = cabeza.y + dy
         nz = cabeza.z + dz
 
-        # 3. Control de rango discreto (FASE 4, DETALLE TÉCNICO).
-        # A nivel conceptual, el cubo planetario no tiene "paredes" y la
-        # serpiente solo debería poder perder por autocolisión. Este chequeo
-        # simplemente garantiza que, a nivel de índices de la rejilla, no
-        # intentemos acceder a posiciones fuera de rango mientras todavía no
-        # está implementado el cambio de cara en la Fase 5.
-        if not (0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE):
-            return
+        # 3. Verificamos si debemos rotar el mundo (Fase 5).
+        rotacion_eje, rotacion_angulo = self._verificar_transicion(nx, ny)
 
-        # 4. Movimiento "crawler" (mover la serpiente).
+        if rotacion_eje is not None:
+            # Ajustamos las coordenadas de todos los segmentos para mantener
+            # la ilusión de que seguimos operando sobre la cara frontal.
+            self._aplicar_transformacion_coordenadas(rotacion_eje, rotacion_angulo)
+
+            # Recalculamos la posición objetivo de la cabeza en el nuevo marco.
+            cabeza = self.segmentos[0]
+            nx = cabeza.x + dx
+            ny = cabeza.y + dy
+            nz = cabeza.z + dz
+
+        # 4. Control defensivo: evitamos acceder fuera de la rejilla
+        # (solo debería ocurrir si en el futuro añadimos nuevas transiciones).
+        if not (0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE):
+            return rotacion_eje, rotacion_angulo
+
+        # 5. Movimiento "crawler" (mover la serpiente).
         # a) Creamos nueva cabeza en la posición destino.
         nueva_cabeza = Segmento(nx, ny, nz, COLOR_SERPIENTE_CABEZA)
 
@@ -120,6 +147,70 @@ class Snake:
         # d) Eliminamos la cola (para mantener el tamaño, a menos que comamos).
         #    En una fase posterior, si comemos, no haremos pop.
         self.segmentos.pop()
+
+        return rotacion_eje, rotacion_angulo
+
+    def _verificar_transicion(self, nx, ny):
+        """
+        Detecta si la coordenada propuesta sale de la cara frontal y determina
+        qué rotación del mundo es necesaria para seguir a la serpiente.
+
+        Returns:
+            tuple[str | None, float]: ('x'|'y', +/-90.0) o (None, 0.0).
+        """
+        limit = GRID_SIZE - 1
+
+        # Caso 1: Salimos por la Derecha -> Mundo gira a la Izquierda (-90º en Y).
+        if nx > limit:
+            return ("y", -90.0)
+
+        # Caso 2: Salimos por la Izquierda -> Mundo gira a la Derecha (+90º en Y).
+        if nx < 0:
+            return ("y", 90.0)
+
+        # Caso 3: Salimos por Arriba -> Mundo gira hacia Abajo (+90º en X).
+        if ny > limit:
+            return ("x", 90.0)
+
+        # Caso 4: Salimos por Abajo -> Mundo gira hacia Arriba (-90º en X).
+        if ny < 0:
+            return ("x", -90.0)
+
+        return (None, 0.0)
+
+    def _aplicar_transformacion_coordenadas(self, eje, angulo_mundo):
+        """
+        Aplica una rotación al sistema de coordenadas de todos los segmentos.
+
+        Principio del “frente infinito”:
+        Si el mundo gira visualmente -90º, rotamos las coordenadas de la serpiente
+        +90º para que, matemáticamente, siga operando sobre la cara frontal.
+        """
+        N = GRID_SIZE - 1
+        angulo_transformacion = -angulo_mundo  # Espejo respecto a la rotación visual.
+
+        for seg in self.segmentos:
+            x, y, z = seg.x, seg.y, seg.z
+
+            if eje == "y":
+                if angulo_transformacion == 90.0:
+                    # Rotación +90º alrededor de Y (CCW).
+                    seg.x = N - z
+                    seg.z = x
+                elif angulo_transformacion == -90.0:
+                    # Rotación -90º alrededor de Y (CW).
+                    seg.x = z
+                    seg.z = N - x
+
+            elif eje == "x":
+                if angulo_transformacion == 90.0:
+                    # Rotación +90º alrededor de X.
+                    seg.y = z
+                    seg.z = N - y
+                elif angulo_transformacion == -90.0:
+                    # Rotación -90º alrededor de X.
+                    seg.y = N - z
+                    seg.z = y
 
     def dibujar(self):
         for seg in self.segmentos:

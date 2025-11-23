@@ -132,19 +132,33 @@ En esta fase nos hemos centrado en que la serpiente deje de ser un simple elemen
 
 **Estado Actual tras Fase 4**: Ahora tenemos una serpiente que **se mueve de forma autónoma** sobre la cara frontal, con controles suaves y separados para el mundo y para la dirección de la propia serpiente. El comportamiento ya se acerca más a la fantasía de "Snake Planetario": el cubo puede seguir rotando mientras la serpiente avanza por su superficie, quedando pendiente para la siguiente fase que ese avance permita cruzar de una cara a otra de manera natural.
 
+### Fase 5: Transición de Caras y Rotación Automática (Completada)
+
+Aquí dimos el salto al concepto de **“frente infinito”**: la serpiente siempre cree que está en la cara frontal, y cuando cruza un borde hacemos que rote su sistema de coordenadas y animamos el mundo para que esa nueva cara se convierta en el frente visible. Implementamos esta lógica en dos frentes:
+
+1.  **Lado lógico (`snake.py`)**: cada vez que un segmento intenta salir del rango `(0..N-1)` devolvemos el eje y el ángulo de rotación necesarios. Antes de movernos aplicamos una rotación matemática a todos los segmentos, de modo que la cadena queda reacomodada sobre la "nueva" cara frontal sin perder continuidad lógica.
+   
+2.  **Lado visual (`main.py`)**: convertimos el bucle principal en una mini máquina de estados. Mientras no haya rotaciones en curso, seguimos aceptando WASD; cuando la serpiente solicita una transición “congelamos” el input manual, retrocedemos un frame la rotación para evitar el típico “pop” y luego interpolamos durante `TIEMPO_ROTACION_AUTO` (definido en `configuracion.py`) hasta alinear el cubo suavemente.
+
+**Problemas enfrentados: Depth Buffer**
+En nuestro primer intento, la serpiente desaparecía al cruzar las esquinas ya que el cristal se dibujaba primero, se escribía en el *depth buffer* y OpenGL descartaba los segmentos que habían quedado “dentro” del cubo (error arrastrado en nuestra fase 3, pero hasta que no hicimos girar el cubo con la serpiente no nos dimos cuenta).
+Después de depurar, vimos que era necesario cambiar el orden de renderizado y la máscara de profundidad:
+* Dibujamos **primero la serpiente** (opaca).
+* Desactivamos la escritura en profundidad (`glDepthMask(GL_FALSE)`) antes de dibujar el tablero.
+* Dibujamos el tablero translúcido encima.
+
+Con este cambio en el `tablero.py`, el mundo volvio a comportarse como un vidrio que se nos asemeja mas a la realidad y ya no perdemos segmentos visualmente durante la animación.
+
+![Fase 5 - Fase 5: Transición de Caras y Rotación Automática ](FasesCompletadas/Hasta_Fase5.gif)
 ---
 
 ## 6. Próximos Pasos
 
 Dado que hemos cambiado la mecánica base, hemos redefinido las siguientes fases para lograr el objetivo del "Snake Planetario".
 
-### Fase 4: Movimiento "Crawler" (Completada)
-Esta fase ya está implementada. Hemos dotado a la serpiente de movimiento automático sobre la cara frontal, con control de dirección mediante flechas y temporización basada en `TIEMPO_PASO`, manteniendo la idea de que el único "game over" real será, en fases futuras, la autocolisión. Para más detalle, ver la sección de avances de la **Fase 4** en el apartado 5.
+- **Fase 4 (Completada)**: Movimiento crawler sobre la cara frontal con temporización fija y separación total entre input de mundo (WASD) e input de serpiente (flechas). Sirvió de base para validar la física discreta y la pila de matrices.
 
-### Fase 5: Transición de Caras y Rotación Automática
-Esta será la fase más compleja y visualmente impactante.
-* Implementar la lógica: *"Si la serpiente cruza el borde derecho, el mundo debe rotar 90 grados hacia la izquierda"*.
-* Suavizar esta rotación para que no sea instantánea, sino una animación fluida que reoriente la nueva cara hacia el frente de la cámara.
+- **Fase 5 (Completada)**: La lógica de transición entre caras y la animación automática ya están dentro del *main loop*. Logramos que la serpiente no pierda continuidad al cruzar una arista y resolvimos el bug de renderizado ajustando el orden de dibujo y la máscara de profundidad del tablero.
 
 ### Fase 6: Comida y Crecimiento 3D
 * Generar comida (cubos rojos) aleatoriamente, pero asegurando que aparezcan solo en las **caras superficiales** del cubo grande, nunca en el interior hueco.
@@ -160,5 +174,3 @@ Esta será la fase más compleja y visualmente impactante.
 *[Esta sección se completará con las referencias bibliográficas consultadas durante el desarrollo del proyecto, en formato APA 7. Incluirá libros, artículos, documentación oficial, tutoriales y cualquier otra fuente utilizada.]*
 
 ---
-
-**Última actualización**: 23 de Noviembre

@@ -13,9 +13,15 @@ Desde aquí orquestamos:
 - La gestión del bucle de juego, incluyendo la lectura del teclado y la
   aplicación de una rotación global al mundo en función del input del usuario.
 
-En esta fase del proyecto todavía no movemos la serpiente de forma autónoma:
-utilizamos la rotación del cubo completo para inspeccionar visualmente la
-estructura de vóxeles y validar las transformaciones geométricas compuestas.
+En esta fase añadimos la rotación automática del cubo cuando la serpiente
+atraviesa un borde, manteniendo la ilusión del “frente infinito” sin sacrificar
+la posibilidad de inspeccionar manualmente el mundo con las teclas WASD.
+
+La lógica del bucle principal opera ahora con dos modos bien diferenciados:
+
+1. Rotación manual controlada por el usuario (modo inspección).
+2. Animación automática que interpola suavemente una rotación de 90º siempre que
+   la serpiente solicita una transición de cara.
 """
 
 import pygame
@@ -31,7 +37,7 @@ def main():
     pygame.init()
     display = (SCREEN_WIDTH, SCREEN_HEIGHT)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("Snake 3D - Fase 4: Movimiento Crawler")
+    pygame.display.set_caption("Snake 3D - Fase 5: Transición de Caras")
 
     # Configuración básica de OpenGL: prueba de profundidad y color de fondo.
     glEnable(GL_DEPTH_TEST)
@@ -54,7 +60,15 @@ def main():
     # entrada del usuario con las teclas WASD para inspeccionar el cubo).
     rot_x = 0.0
     rot_y = 0.0
-    
+
+    # Variables que controlan la animación automática al cambiar de cara.
+    animando = False
+    tiempo_animacion = 0.0
+    inicio_rot_x = rot_x
+    inicio_rot_y = rot_y
+    meta_rot_x = rot_x
+    meta_rot_y = rot_y
+
     clock = pygame.time.Clock()
 
     while True:
@@ -67,7 +81,7 @@ def main():
                 pygame.quit()
                 return
             # --- INPUT SERPIENTE (Eventos discretos para evitar doble giro) ---
-            if event.type == pygame.KEYDOWN:
+            if not animando and event.type == pygame.KEYDOWN:
                 if event.key == K_UP:
                     snake.cambiar_direccion(DIR_UP)
                 elif event.key == K_DOWN:
@@ -77,20 +91,59 @@ def main():
                 elif event.key == K_RIGHT:
                     snake.cambiar_direccion(DIR_RIGHT)
 
-        # Control de rotación del cubo gigante mediante teclas WASD.
-        # Cada tecla modifica el ángulo acumulado en el eje correspondiente.
-        keys = pygame.key.get_pressed()
-        if keys[K_a]:  # Izquierda
-            rot_y -= VELOCIDAD_ROTACION_MUNDO * dt
-        if keys[K_d]:  # Derecha
-            rot_y += VELOCIDAD_ROTACION_MUNDO * dt
-        if keys[K_w]:  # Arriba
-            rot_x -= VELOCIDAD_ROTACION_MUNDO * dt
-        if keys[K_s]:  # Abajo
-            rot_x += VELOCIDAD_ROTACION_MUNDO * dt
+        if animando:
+            # 2.a Modo Animación: interpolamos hacia la meta calculada.
+            tiempo_animacion += dt
+            t = min(tiempo_animacion / TIEMPO_ROTACION_AUTO, 1.0)
 
-        # 2. Actualización de la lógica de la serpiente en función del tiempo.
-        snake.actualizar(dt)
+            # Para depurar utilizamos interpolación lineal. Si queremos un
+            # efecto más suave basta con activar una curva ease-out:
+            # t_smooth = t * (2 - t)
+            t_smooth = t
+
+            rot_x = inicio_rot_x + (meta_rot_x - inicio_rot_x) * t_smooth
+            rot_y = inicio_rot_y + (meta_rot_y - inicio_rot_y) * t_smooth
+
+            if t >= 1.0:
+                animando = False
+                rot_x = meta_rot_x
+                rot_y = meta_rot_y
+        else:
+            # 2.b Modo Manual: el usuario puede rotar y la serpiente avanza.
+            keys = pygame.key.get_pressed()
+            if keys[K_a]:  # Izquierda
+                rot_y -= VELOCIDAD_ROTACION_MUNDO * dt
+            if keys[K_d]:  # Derecha
+                rot_y += VELOCIDAD_ROTACION_MUNDO * dt
+            if keys[K_w]:  # Arriba
+                rot_x -= VELOCIDAD_ROTACION_MUNDO * dt
+            if keys[K_s]:  # Abajo
+                rot_x += VELOCIDAD_ROTACION_MUNDO * dt
+
+            eje_transicion, angulo_transicion = snake.actualizar(dt)
+
+            if eje_transicion:
+                # Iniciamos la animación automática solicitada por la serpiente.
+                animando = True
+                tiempo_animacion = 0.0
+
+                target_change = angulo_transicion
+
+                # Ajuste de "pop": retrocedemos instantáneamente la rotación visual
+                # para que la serpiente no parezca teletransportarse y luego
+                # interpolamos de nuevo hacia la postura final.
+                if eje_transicion == 'x':
+                    inicio_rot_x = rot_x - target_change
+                    inicio_rot_y = rot_y
+                    rot_x = inicio_rot_x
+                    meta_rot_x = inicio_rot_x + target_change
+                    meta_rot_y = rot_y
+                elif eje_transicion == 'y':
+                    inicio_rot_x = rot_x
+                    inicio_rot_y = rot_y - target_change
+                    rot_y = inicio_rot_y
+                    meta_rot_x = rot_x
+                    meta_rot_y = inicio_rot_y + target_change
 
         # 3. Renderizado
         #    Limpiamos los buffers, colocamos la cámara en una posición fija
@@ -112,10 +165,10 @@ def main():
         glRotatef(rot_y, 0, 1, 0) # Rotación eje Y (Izquierda/Derecha)
 
         # Dibujamos el contenido del mundo:
-        # primero la estructura volumétrica del tablero y, a continuación, la
-        # serpiente sobre la cara frontal.
-        tablero.dibujar()
+        # Primero la serpiente (opaca) para asegurar que escriba en el depth buffer.
+        # Después el tablero translúcido, que se mezcla sobre la escena sin ocultarla.
         snake.dibujar()
+        tablero.dibujar()
 
         glPopMatrix()
 

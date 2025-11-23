@@ -19,8 +19,9 @@ cubo) antes de introducir la lógica de movimiento sobre la superficie.
 
 from OpenGL.GL import (
     glBegin, glEnd, glColor4f, glVertex3f,
-    glEnable, glDisable, glBlendFunc, glLineWidth,
-    GL_QUADS, GL_LINES, GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+    glEnable, glDisable, glBlendFunc, glLineWidth, glDepthMask,
+    GL_QUADS, GL_LINES, GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+    GL_FALSE, GL_TRUE,
 )
 from configuracion import (
     GRID_SIZE, TAMANO_CELDA, OFFSET_GRID,
@@ -60,6 +61,10 @@ class Tablero:
         """
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        # Los cubos son translúcidos: evitamos que escriban en el depth buffer
+        # para no ocultar accidentalmente entidades opacas como la serpiente.
+        glDepthMask(GL_FALSE)
         
         # Recorremos todo el volumen para dibujar la "rejilla de cristal"
         # Nota: Para optimizar en fases futuras, podríamos dibujar solo las caras externas
@@ -77,6 +82,7 @@ class Tablero:
                         objeto_dibujado=self._dibujar_cubo_cristal
                     )
         
+        glDepthMask(GL_TRUE)
         glDisable(GL_BLEND)
 
     def _dibujar_cubo_cristal(self):

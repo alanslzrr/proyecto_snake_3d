@@ -85,6 +85,13 @@ VELOCIDAD_ROTACION_MUNDO = 90.0
 # 0.15 = 150ms. Cuanto menor sea el número, más rápida es la serpiente.
 TIEMPO_PASO = 0.15
 
+# --- FASE 5: Configuración de Rotación Automática ---
+#
+# Tiempo (en segundos) que tarda el mundo en completar una rotación de 90º
+# cuando la serpiente atraviesa el borde de una cara y debemos "reorientar"
+# la escena para seguir con la ilusión del “frente infinito”.
+TIEMPO_ROTACION_AUTO = 0.4
+
 # Vectores de Dirección (x, y, z)
 # Nota: En la cara frontal (Z positiva), 'Arriba' es +Y, 'Derecha' es +X.
 DIR_UP    = (0, 1, 0)
