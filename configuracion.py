@@ -22,24 +22,27 @@ Organizamos la configuración en secciones temáticas:
 """
 
 # ---------------------------------------------------------------------------
-# Colores base (R, G, B, A) - Añadimos Alpha para transparencias
+# Colores base (R, G, B, A)
 # ---------------------------------------------------------------------------
 
-# Cubos vacíos del interior del mundo cúbico
-# (tono azulado translúcido para reforzar la estética de “cubo de cristal”).
-# Relleno: Casi inexistente. Solo una pequeñísima sugerencia de materia azulada.
-COLOR_CUBO_VACIO = (0.0, 0.1, 0.3, 0.015)
+# Cubos vacíos: ESTILO CRISTAL REAL.
+# Relleno: Usamos un azul oscuro y sobrio (Navy). 
+# Alpha bajísimo (0.02) para que al sumarse las 15 capas parezca vidrio grueso 
+# pero transparente, sin brillar.
+COLOR_CUBO_VACIO = (0.1, 0.1, 0.4, 0.02)
 
-# Borde: Azul eléctrico vibrante.
-# Mantenemos tu color azul base pero aumentamos el Alpha para que defina mucho más la forma.
-COLOR_BORDE_VACIO = (0.3, 0.3, 1.0, 0.4)
+# Borde: Azul Real (No Cian, No Neón).
+# Mantenemos los valores R y G bajos para que no parezca un láser.
+# Solo subimos el Azul (B) y mantenemos un Alpha moderado.
+# Esto hace que el borde parezca el canto de un cristal, no una luz.
+COLOR_BORDE_VACIO = (0.25, 0.25, 0.7, 0.25)
 
 # Colores sólidos para entidades jugables y de entorno.
-# Usamos RGBA normalizado en el rango [0.0, 1.0].
-COLOR_SERPIENTE_CABEZA = (0.0, 1.0, 0.0, 1.0)   # Verde brillante para la cabeza
-COLOR_SERPIENTE_CUERPO = (0.0, 0.8, 0.0, 1.0)   # Verde ligeramente más oscuro
-COLOR_COMIDA           = (1.0, 0.0, 0.0, 1.0)   # Rojo intenso para resaltar la comida
-COLOR_FONDO            = (0.05, 0.05, 0.05, 1.0)  # Fondo casi negro para centrar la atención en el cubo
+# (Estos los mantenemos igual, ahora resaltarán mucho más)
+COLOR_SERPIENTE_CABEZA = (0.0, 1.0, 0.0, 1.0)
+COLOR_SERPIENTE_CUERPO = (0.0, 0.8, 0.0, 1.0)
+COLOR_COMIDA           = (1.0, 0.0, 0.0, 1.0)
+COLOR_FONDO            = (0.05, 0.05, 0.05, 1.0)
 
 # ---------------------------------------------------------------------------
 # Parámetros del Mundo Cúbico
