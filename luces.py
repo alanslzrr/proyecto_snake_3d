@@ -1,77 +1,98 @@
 """
-Proyecto Snake 3D - luces.py
+Proyecto Snake 3D: Vóxel Planetario - luces.py
 
-En este módulo encapsulamos la configuración de iluminación que enviamos a los
-shaders del pipeline moderno de OpenGL.
+Este módulo gestiona el sistema de iluminación de nuestra escena 3D. La luz
+es fundamental para dar volumen y profundidad a los objetos, transformando
+formas planas en elementos tridimensionales convincentes.
 
-Reutilizamos y adaptamos el enfoque del proyecto de referencia `SHADER`,
-manteniendo una interfaz sencilla que agrupa los parámetros de luz más
-relevantes (componente ambiente, difusa, especular y brillo) y los expone en
-forma de una única clase lista para ser usada por el resto del proyecto.
+Implementamos una luz direccional (GL_LIGHT0) posicionada en la esquina
+superior derecha frontal de la escena. Esta configuración crea sombras suaves
+y resalta los bordes del cubo planetario, mejorando significativamente la
+lectura espacial del juego.
 
-Aunque en la versión actual del Snake planetario todavía no explotamos todos
-los efectos de iluminación posibles, dejamos esta infraestructura preparada para
-realzar, en fases posteriores, el volumen del cubo de vóxeles y la presencia de
-la serpiente sobre su superficie.
+Además de la iluminación estática, este módulo gestiona el efecto de
+"Flash" que se activa cuando la serpiente come. Este feedback visual
+refuerza la sensación de logro del jugador mediante un destello de luz
+que ilumina momentáneamente toda la escena.
 """
 
-from OpenGL.GL import (
-    glUseProgram,
-    glGetUniformLocation,
-    glUniform3f,
-    glUniform1f,
-)
+from OpenGL.GL import *
 
 
 class Iluminacion:
     """
-    Representa una única fuente de luz puntual con componentes ambiente,
-    difusa y especular, además de un exponente de brillo para controlar la
-    intensidad de los reflejos especulares en los shaders.
-
-    Centralizar estos parámetros en una clase nos permite ajustar de forma
-    coherente la atmósfera visual de la escena (cubo, serpiente y elementos
-    auxiliares) sin dispersar configuraciones por el código.
+    Clase que encapsula la configuración de iluminación OpenGL y el sistema
+    de efectos visuales dinámicos (flash al comer).
+    
+    La iluminación se compone de tres elementos:
+    - Luz ambiental: Iluminación base que afecta a todos los objetos.
+    - Luz difusa: Componente direccional que crea degradados de sombra.
+    - Luz especular: Brillos puntuales que dan sensación de material pulido.
     """
-
-    def __init__(self) -> None:
-        # Valores iniciales de la luz, heredados del proyecto de referencia.
-        self.light_ambient = (0.1, 0.1, 0.1)
-        self.light_diffuse = (0.8, 0.8, 0.8)
-        self.light_specular = (0.5, 0.5, 0.5)
-        self.light_shininess = 32.0
-
-    def aplicar(self, shader_program: int, light_pos: tuple[float, float, float], view_pos: tuple[float, float, float]) -> None:
-        """
-        Envía los parámetros de la luz al programa de shaders activo.
-
-        Args:
-            shader_program:
-                ID del programa de shaders sobre el que vamos a aplicar la
-                configuración de iluminación.
-            light_pos:
-                Posición de la luz en coordenadas de mundo, utilizada por el
-                shader para calcular direcciones de iluminación.
-            view_pos:
-                Posición de la cámara en el mundo, necesaria para calcular el
-                componente especular en el modelo de iluminación.
-        """
-        glUseProgram(shader_program)
-
-        loc_pos = glGetUniformLocation(shader_program, "lightPos")
-        loc_view = glGetUniformLocation(shader_program, "viewPos")
-        loc_amb = glGetUniformLocation(shader_program, "lightAmbient")
-        loc_diff = glGetUniformLocation(shader_program, "lightDiffuse")
-        loc_spec = glGetUniformLocation(shader_program, "lightSpecular")
-        loc_shin = glGetUniformLocation(shader_program, "lightShininess")
-
-        glUniform3f(loc_pos, *light_pos)
-        glUniform3f(loc_view, *view_pos)
-        glUniform3f(loc_amb, *self.light_ambient)
-        glUniform3f(loc_diff, *self.light_diffuse)
-        glUniform3f(loc_spec, *self.light_specular)
-        glUniform1f(loc_shin, self.light_shininess)
-
-        glUseProgram(0)
+    def __init__(self):
+        # Luz direccional desde la esquina superior derecha frontal
+        self.luz_posicion = [10.0, 10.0, 10.0, 1.0]
+        
+        # Configuración base de intensidad
+        self.base_ambiental = [0.3, 0.3, 0.3, 1.0]
+        self.base_difusa = [0.8, 0.8, 0.8, 1.0]
+        
+        # Estado actual (puede variar por el flash)
+        self.luz_ambiental = list(self.base_ambiental)
+        self.luz_difusa = list(self.base_difusa)
+        self.luz_especular = [1.0, 1.0, 1.0, 1.0]
+        
+        # Variables para el efecto Flash
+        self.flash_intensity = 0.0
+        self.flash_decay = 2.0 # Más lento (0.5s) para que sea visible
 
 
+    def trigger_flash(self):
+        """Dispara un flash de luz blanca intensa."""
+        self.flash_intensity = 1.0
+
+    def update(self, dt):
+        """Actualiza la intensidad del flash frame a frame."""
+        if self.flash_intensity > 0:
+            self.flash_intensity -= self.flash_decay * dt
+            if self.flash_intensity < 0:
+                self.flash_intensity = 0
+            
+            # Mezclamos el color base con blanco puro según la intensidad del flash
+            # Ambiental: 0.3 -> 1.0
+            # Difusa: 0.8 -> 1.0
+            
+            fi = self.flash_intensity
+            self.luz_ambiental = [
+                min(1.0, self.base_ambiental[0] + fi * 0.7),
+                min(1.0, self.base_ambiental[1] + fi * 0.7),
+                min(1.0, self.base_ambiental[2] + fi * 0.7),
+                1.0
+            ]
+            self.luz_difusa = [
+                min(1.0, self.base_difusa[0] + fi * 0.2),
+                min(1.0, self.base_difusa[1] + fi * 0.2),
+                min(1.0, self.base_difusa[2] + fi * 0.2),
+                1.0
+            ]
+        else:
+            # Restaurar valores base si no hay flash (optimización)
+            self.luz_ambiental = list(self.base_ambiental)
+            self.luz_difusa = list(self.base_difusa)
+
+    def activar(self):
+        glEnable(GL_LIGHTING)
+        glEnable(GL_LIGHT0)
+        
+        glLightfv(GL_LIGHT0, GL_POSITION, self.luz_posicion)
+        glLightfv(GL_LIGHT0, GL_AMBIENT, self.luz_ambiental)
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, self.luz_difusa)
+        glLightfv(GL_LIGHT0, GL_SPECULAR, self.luz_especular)
+        
+        # Configuración de material para que los colores de los objetos reaccionen a la luz
+        glEnable(GL_COLOR_MATERIAL)
+        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE)
+        
+        # Brillo especular
+        glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
+        glMaterialf(GL_FRONT, GL_SHININESS, 50.0)

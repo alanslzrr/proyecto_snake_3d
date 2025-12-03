@@ -1,38 +1,81 @@
 """
-Proyecto Snake 3D - tablero.py
+Proyecto Snake 3D: Vóxel Planetario - tablero.py
 
-En este módulo representamos el “Mundo Cúbico” sobre el que se desarrolla
-nuestra versión planetaria del Snake 3D.
+Este módulo representa el corazón visual del juego: el "Mundo Cúbico" sobre
+el que la serpiente se desplaza. Lo que antes era un simple tablero plano
+se ha transformado en una estructura tridimensional fascinante.
 
-El tablero deja de ser un plano tradicional para convertirse en:
+El tablero es ahora:
+- Un volumen de GRID_SIZE × GRID_SIZE × GRID_SIZE celdas (vóxeles).
+- Una rejilla centrada en el origen del espacio 3D.
+- Una estructura semitransparente que permite ver el interior del cubo,
+  creando el distintivo efecto de "cubo de cristal".
 
-- Un volumen tridimensional discreto de tamaño `GRID_SIZE × GRID_SIZE × GRID_SIZE`.
-- Una rejilla de celdas cúbicas (vóxeles) centrada en el origen del espacio 3D.
-- Una estructura visual semitransparente que permite ver el interior del cubo y
-  sirve como referencia espacial para la posición de la serpiente.
+Para lograr un rendimiento óptimo (60 FPS con miles de cubos), implementamos
+Display Lists de OpenGL. Esta técnica precompila todos los comandos de dibujo
+del tablero en la memoria de la GPU durante la inicialización. Después, cada
+frame solo requiere una única llamada para renderizar toda la estructura.
 
-Nuestro objetivo en esta fase es proporcionar una representación volumétrica
-clara y estable que nos permita razonar sobre coordenadas (x, y, z) y probar
-las transformaciones geométricas globales del mundo (rotaciones completas del
-cubo) antes de introducir la lógica de movimiento sobre la superficie.
+Además, como optimización adicional, solo dibujamos los vóxeles de la
+superficie del cubo (las 6 caras externas), dejando el interior vacío.
+Esto reduce drásticamente el número de polígonos sin afectar la jugabilidad,
+ya que la serpiente solo se mueve por la superficie.
 """
 
 from OpenGL.GL import (
     glBegin, glEnd, glColor4f, glVertex3f,
     glEnable, glDisable, glBlendFunc, glLineWidth, glDepthMask,
     GL_QUADS, GL_LINES, GL_BLEND, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
-    GL_FALSE, GL_TRUE,
+    GL_FALSE, GL_TRUE, GL_LIGHTING,
+    glGenLists, glNewList, glEndList, glCallList, GL_COMPILE
 )
 from configuracion import (
     GRID_SIZE, TAMANO_CELDA, OFFSET_GRID,
-    COLOR_CUBO_VACIO, COLOR_BORDE_VACIO
+    COLOR_CUBO_VACIO, COLOR_BORDE_VACIO, ESPACIO_CELDA
 )
 from transformaciones import transformar
 
 class Tablero:
     def __init__(self):
         self.size = GRID_SIZE
+        self.display_list_id = None
+        self._compilar_lista()
     
+    def _compilar_lista(self):
+        """
+        Compila la geometría del tablero en una Display List de OpenGL.
+        Esto envía todos los comandos de dibujo a la GPU una sola vez.
+        """
+        self.display_list_id = glGenLists(1)
+        glNewList(self.display_list_id, GL_COMPILE)
+        
+        # --- Lógica de dibujo original ---
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(GL_FALSE)
+        
+        for x in range(self.size):
+            for y in range(self.size):
+                for z in range(self.size):
+                    # Optimización Fase 11: Solo dibujamos los cubos de la superficie (hueco por dentro)
+                    # Esto limpia visualmente el centro y mejora el rendimiento.
+                    if x == 0 or x == self.size - 1 or \
+                       y == 0 or y == self.size - 1 or \
+                       z == 0 or z == self.size - 1:
+                        
+                        px, py, pz = self.obtener_posicion_mundo(x, y, z)
+                        transformar(
+                            t_x=px, t_y=py, t_z=pz,
+                            s_x=TAMANO_CELDA, s_y=TAMANO_CELDA, s_z=TAMANO_CELDA,
+                            objeto_dibujado=self._dibujar_cubo_cristal
+                        )
+        
+        glDepthMask(GL_TRUE)
+        glDisable(GL_BLEND)
+        # ---------------------------------
+        
+        glEndList()
+
     def obtener_posicion_mundo(self, x: int, y: int, z: int) -> tuple:
         """
         Convierte coordenadas discretas de rejilla (0..N-1) en coordenadas de
@@ -42,48 +85,21 @@ class Tablero:
         puede traducirse a una posición 3D continua, compatible con las
         transformaciones de OpenGL.
         """
-        pos_x = (x * TAMANO_CELDA) - OFFSET_GRID + (TAMANO_CELDA / 2)
-        pos_y = (y * TAMANO_CELDA) - OFFSET_GRID + (TAMANO_CELDA / 2)
-        pos_z = (z * TAMANO_CELDA) - OFFSET_GRID + (TAMANO_CELDA / 2)
+        # Fase 11: Incluimos el espacio entre celdas en el cálculo de la posición.
+        stride = TAMANO_CELDA + ESPACIO_CELDA
+        
+        pos_x = (x * stride) - OFFSET_GRID + (TAMANO_CELDA / 2)
+        pos_y = (y * stride) - OFFSET_GRID + (TAMANO_CELDA / 2)
+        pos_z = (z * stride) - OFFSET_GRID + (TAMANO_CELDA / 2)
         return pos_x, pos_y, pos_z
 
     def dibujar(self):
         """
-        Dibuja la estructura volumétrica completa del cubo gigante.
-
-        Activamos `GL_BLEND` para que los minicubos que conforman el mundo
-        tengan un relleno translúcido, manteniendo la sensación de “cubo de
-        cristal” y permitiendo percibir la profundidad interna.
-
-        Nota: En esta fase recorremos todas las celdas del volumen; en etapas
-        posteriores podríamos optimizar este proceso dibujando únicamente las
-        capas visibles o empleando técnicas más avanzadas de instancing.
+        Dibuja el tablero invocando la Display List precompilada.
+        Rendimiento: 1 llamada vs 170,000 llamadas.
         """
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-        # Los cubos son translúcidos: evitamos que escriban en el depth buffer
-        # para no ocultar accidentalmente entidades opacas como la serpiente.
-        glDepthMask(GL_FALSE)
-        
-        # Recorremos todo el volumen para dibujar la "rejilla de cristal"
-        # Nota: Para optimizar en fases futuras, podríamos dibujar solo las caras externas
-        # o usar Instancing, pero por ahora lo hacemos explícito para entender la lógica.
-        for x in range(self.size):
-            for y in range(self.size):
-                for z in range(self.size):
-                    # Obtenemos coordenadas 3D reales
-                    px, py, pz = self.obtener_posicion_mundo(x, y, z)
-                    
-                    # Dibujamos cada "celda vacía"
-                    transformar(
-                        t_x=px, t_y=py, t_z=pz,
-                        s_x=TAMANO_CELDA, s_y=TAMANO_CELDA, s_z=TAMANO_CELDA,
-                        objeto_dibujado=self._dibujar_cubo_cristal
-                    )
-        
-        glDepthMask(GL_TRUE)
-        glDisable(GL_BLEND)
+        if self.display_list_id:
+            glCallList(self.display_list_id)
 
     def _dibujar_cubo_cristal(self):
         """
@@ -94,13 +110,11 @@ class Tablero:
         wireframe refuerza la lectura de la rejilla 3D cuando el cubo rota
         sobre sí mismo.
         """
-        hs = 0.45 # Half size (un poco menos de 0.5 para ver separación entre celdas)
+        hs = 0.4 # Half size (Reducido a 0.4 para mayor separación visual entre celdas)
         
         # 1. Relleno translúcido
         glColor4f(*COLOR_CUBO_VACIO)
         glBegin(GL_QUADS)
-        # ... (Definición de los vértices del cubo, omitido por brevedad estándar, 
-        # es el mismo cubo de siempre pero con alpha)
         # Cara frontal
         glVertex3f(-hs, -hs,  hs); glVertex3f( hs, -hs,  hs)
         glVertex3f( hs,  hs,  hs); glVertex3f(-hs,  hs,  hs)
@@ -122,6 +136,8 @@ class Tablero:
         glEnd()
 
         # 2. Bordes (Wireframe)
+        # Desactivamos iluminación para que las líneas se vean siempre nítidas
+        glDisable(GL_LIGHTING)
         glLineWidth(1.0)
         glColor4f(*COLOR_BORDE_VACIO)
         glBegin(GL_LINES)
@@ -141,3 +157,4 @@ class Tablero:
         glVertex3f( hs, hs, hs); glVertex3f( hs, hs,-hs)
         glVertex3f(-hs, hs, hs); glVertex3f(-hs, hs,-hs)
         glEnd()
+        glEnable(GL_LIGHTING) # Reactivamos iluminación para el resto de la escena

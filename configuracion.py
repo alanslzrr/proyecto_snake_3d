@@ -1,21 +1,24 @@
 """
-Proyecto Snake 3D - configuracion.py
+Proyecto Snake 3D: Vóxel Planetario - configuracion.py
 
-En este módulo concentramos toda la configuración global del proyecto, actuando
-como punto único de verdad para constantes visuales, geométricas y de control.
+Este módulo es el "panel de control" de todo el proyecto. Aquí centralizamos
+todas las constantes y parámetros que definen el comportamiento visual,
+geométrico y de control del juego.
 
-Hemos adaptado estas constantes a la nueva versión del juego basada en un
-“Cubo Planetario” de estilo vóxel, en el que la serpiente se desplaza sobre la
-superficie de un cubo gigante que rota en bloque. Desde aquí parametrizamos:
+La filosofía es simple: cualquier valor que pueda necesitar ajuste durante
+el desarrollo o para personalizar la experiencia de juego debe estar aquí,
+en un único lugar. Esto nos permite:
 
-- La paleta de colores (incluyendo canal alpha para transparencias).
-- Las dimensiones discretas del mundo cúbico y el tamaño de cada celda.
-- El sistema de proyección y la ventana de renderizado.
-- La frecuencia objetivo de actualización y la velocidad de rotación global
-  del mundo.
+- Ajustar rápidamente el tamaño del cubo, los colores o la velocidad.
+- Mantener coherencia entre todos los módulos que usan estos valores.
+- Documentar claramente qué significa cada parámetro.
 
-Este diseño centralizado nos permite ajustar el comportamiento visual y
-geométrico del juego de forma coherente en todos los módulos.
+Organizamos la configuración en secciones temáticas:
+1. Paleta de colores (incluyendo canal alpha para transparencias).
+2. Dimensiones del mundo cúbico y tamaño de cada celda.
+3. Configuración de la ventana y proyección.
+4. Parámetros de control y velocidad.
+5. Configuración de las diferentes cámaras.
 """
 
 # ---------------------------------------------------------------------------
@@ -24,11 +27,12 @@ geométrico del juego de forma coherente en todos los módulos.
 
 # Cubos vacíos del interior del mundo cúbico
 # (tono azulado translúcido para reforzar la estética de “cubo de cristal”).
-COLOR_CUBO_VACIO = (0.2, 0.2, 0.5, 0.15)
+# Relleno: Casi inexistente. Solo una pequeñísima sugerencia de materia azulada.
+COLOR_CUBO_VACIO = (0.0, 0.1, 0.3, 0.015)
 
-# Borde de los cubos vacíos
-# (azul algo más intenso para que la rejilla interna sea legible).
-COLOR_BORDE_VACIO = (0.3, 0.3, 0.7, 0.3)
+# Borde: Azul eléctrico vibrante.
+# Mantenemos tu color azul base pero aumentamos el Alpha para que defina mucho más la forma.
+COLOR_BORDE_VACIO = (0.3, 0.3, 1.0, 0.4)
 
 # Colores sólidos para entidades jugables y de entorno.
 # Usamos RGBA normalizado en el rango [0.0, 1.0].
@@ -43,23 +47,29 @@ COLOR_FONDO            = (0.05, 0.05, 0.05, 1.0)  # Fondo casi negro para centra
 
 # Dimensiones del cubo grande (N x N x N).
 # Por ejemplo, si es 10, obtenemos un volumen de 10×10×10 celdas discretas.
-GRID_SIZE = 10
+# Dimensiones del cubo grande (N x N x N).
+# Aumentamos a 15 para dar más espacio de juego (Fase 9).
+GRID_SIZE = 15
 
 # Tamaño visual (en unidades de mundo) de cada minicubo (celda).
 TAMANO_CELDA = 1.0
 
 # Espacio entre celdas (pequeña separación para efecto rejilla si lo activamos).
-ESPACIO_CELDA = 0.0
+# Fase 11: Aumentamos el espacio para separar los vóxeles.
+ESPACIO_CELDA = 0.2
 
 # Desplazamiento necesario para centrar el cubo grande en el origen (0, 0, 0).
-OFFSET_GRID = (GRID_SIZE * TAMANO_CELDA) / 2.0
+# Calculamos el ancho total: N celdas + (N-1) espacios.
+ANCHO_TOTAL = (GRID_SIZE * TAMANO_CELDA) + ((GRID_SIZE - 1) * ESPACIO_CELDA)
+OFFSET_GRID = ANCHO_TOTAL / 2.0
 
 # ---------------------------------------------------------------------------
 # Ventana y proyección en perspectiva
 # ---------------------------------------------------------------------------
 
-SCREEN_WIDTH        = 800
-SCREEN_HEIGHT       = 600
+# Ampliamos la resolución para una mejor experiencia (Fase 9 -> Fase 10 Ajuste).
+SCREEN_WIDTH        = 1280
+SCREEN_HEIGHT       = 960
 SCREEN_ASPECT_RATIO = SCREEN_WIDTH / SCREEN_HEIGHT
 
 # Campo de visión vertical de la cámara (en grados).
@@ -73,6 +83,8 @@ FAR_PLANE  = 100.0
 # ---------------------------------------------------------------------------
 
 FPS = 60
+# Puntuación (Fase 9)
+PUNTOS_POR_COMIDA = 8
 
 # Velocidad de rotación global del mundo (en grados/segundo) al responder
 # a las teclas de dirección. Ajustando este valor controlamos la suavidad
@@ -99,3 +111,28 @@ DIR_DOWN  = (0, -1, 0)
 DIR_LEFT  = (-1, 0, 0)
 DIR_RIGHT = (1, 0, 0)
 DIR_STOP  = (0, 0, 0)  # Estado inicial o de pausa
+
+# --- FASE 10: Configuración de Cámaras (Ajuste de Proximidad) ---
+#
+# Definimos los multiplicadores de distancia para las distintas cámaras.
+# La distancia base se calcula como GRID_SIZE * 2.5
+#
+# Cámara 1 (Default): Isométrica (Diagonal)
+# Ajustada para estar más cerca y ver los detalles del vóxel.
+CAMARA_1_POS = (0.85, 0.7, 0.85) # (x, y, z) multiplicadores
+
+# Cámara 2: Frontal Inclinada
+# De frente (X=0), elevada ligeramente y mucho más cerca en Z
+# para una experiencia inmersiva "casi dentro" del cubo.
+CAMARA_2_POS = (0.0, 0.4, 0.9)
+
+# Cámara 3: Tercera Persona (Seguimiento)
+# Offset relativo a la cabeza de la serpiente.
+# (0, 0, 12) significa 12 unidades "atrás" (en Z) de la cabeza.
+CAMARA_3_OFFSET = (0.0, 0.0, 12.0)
+
+# Cámara 4: Primera Persona (Snake View)
+# "Encima de la cabeza" (Offset en Z, la normal)
+# "Mirando al frente" (Usaremos el vector de dirección de la serpiente)
+CAMARA_4_ALTURA = 1.5 # Altura sobre la cabeza (eje Z local)
+CAMARA_4_DISTANCIA_MIRA = 5.0 # Qué tan lejos mira hacia adelante

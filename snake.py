@@ -101,9 +101,10 @@ class Snake:
 
         return rotacion_solicitada
 
-    def mover(self):
+    def mover(self, crecer=False):
         """
         Calcula la nueva posición, gestiona transiciones de cara y actualiza los segmentos.
+        :param crecer: Si es True, no eliminamos la cola (la serpiente crece).
         """
         # 1. Actualizamos la dirección oficial.
         self.direccion = self.proxima_direccion
@@ -134,6 +135,27 @@ class Snake:
         if not (0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE):
             return rotacion_eje, rotacion_angulo
 
+        # --- FASE 8: Detección de Autocolisión ---
+        # Verificamos si la nueva posición de la cabeza coincide con algún segmento del cuerpo.
+        # Nota: No comprobamos el último segmento si no vamos a crecer, porque ese espacio quedará libre.
+        # Sin embargo, para simplificar y ser robustos, comprobamos contra todos menos la cola actual
+        # si no crecemos.
+        
+        # Enfoque simple: comprobamos contra todos los segmentos actuales.
+        # Si la nueva cabeza (nx, ny, nz) está en self.segmentos, es choque.
+        # Excepción: si no crecemos, la cola se va a ir, así que chocar contra la cola es válido (perseguirla).
+        
+        limite_comprobacion = len(self.segmentos)
+        if not crecer:
+            limite_comprobacion -= 1 # Ignoramos la cola actual porque se moverá
+            
+        for i in range(limite_comprobacion):
+            seg = self.segmentos[i]
+            if seg.x == nx and seg.y == ny and seg.z == nz:
+                self.vivo = False
+                print("Game Over: Autocolisión detectada")
+                return rotacion_eje, rotacion_angulo
+
         # 5. Movimiento "crawler" (mover la serpiente).
         # a) Creamos nueva cabeza en la posición destino.
         nueva_cabeza = Segmento(nx, ny, nz, COLOR_SERPIENTE_CABEZA)
@@ -144,10 +166,11 @@ class Snake:
         # c) Insertamos la nueva cabeza al principio de la lista.
         self.segmentos.insert(0, nueva_cabeza)
 
-        # d) Eliminamos la cola (para mantener el tamaño, a menos que comamos).
-        #    En una fase posterior, si comemos, no haremos pop.
-        self.segmentos.pop()
-
+        # d) Gestión de la cola (Crecimiento)
+        if not crecer:
+            # Si no crecemos, eliminamos la cola para mantener el tamaño.
+            self.segmentos.pop()
+        
         return rotacion_eje, rotacion_angulo
 
     def _verificar_transicion(self, nx, ny):
@@ -211,6 +234,15 @@ class Snake:
                     # Rotación -90º alrededor de X.
                     seg.y = N - z
                     seg.z = y
+
+    def crecer(self):
+        """
+        Hace crecer a la serpiente añadiendo un nuevo segmento al final (cola).
+        Se duplica el último segmento; en el siguiente movimiento se "desplegará".
+        """
+        cola = self.segmentos[-1]
+        nuevo_segmento = Segmento(cola.x, cola.y, cola.z, COLOR_SERPIENTE_CUERPO)
+        self.segmentos.append(nuevo_segmento)
 
     def dibujar(self):
         for seg in self.segmentos:
