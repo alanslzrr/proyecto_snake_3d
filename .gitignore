@@ -17,5 +17,4 @@ Thumbs.db
 # Configuración local de IDEs (el proyecto no depende de ellas)
 .vscode/
 .idea/
-
-
+.python-version
